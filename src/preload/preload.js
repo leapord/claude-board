@@ -61,6 +61,18 @@ contextBridge.exposeInMainWorld('claudeBoard', {
     deletePrice: (name)     => ipcRenderer.invoke('models:delete-price', name),
   },
 
+  // 配置组管理（从 model_helper 融合）
+  profiles: {
+    list:      ()                => ipcRenderer.invoke('profiles:list'),
+    get:       (name)            => ipcRenderer.invoke('profiles:get', name),
+    add:       (profile)         => ipcRenderer.invoke('profiles:add', profile || {}),
+    update:    (name, patch)     => ipcRenderer.invoke('profiles:update', name, patch || {}),
+    delete:    (name)            => ipcRenderer.invoke('profiles:delete', name),
+    switchTo:  (name)            => ipcRenderer.invoke('profiles:switch', name),
+    current:   ()                => ipcRenderer.invoke('profiles:current'),
+    envFields: ()                => ipcRenderer.invoke('profiles:env-fields'),
+  },
+
   // 终端（xterm.js 持续 shell 会话）
   terminal: {
     start: (opts) => ipcRenderer.invoke('terminal:start', opts || {}),

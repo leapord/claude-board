@@ -514,6 +514,25 @@ input, select, textarea { font-family: inherit; color: inherit; }
 @keyframes rotate { 100% { transform: rotate(360deg); } }
 .max-level-preview > * { position: relative; }
 .max-level-preview__crown { width: 80px; height: 80px; margin: 0 auto 8px; filter: drop-shadow(0 0 20px var(--yellow)); }
+/* 未达 Lv.99 时灰显锁定 */
+.max-level-preview--locked {
+  border-color: var(--border);
+  background: linear-gradient(135deg, var(--bg-2), var(--bg-3));
+}
+.max-level-preview--locked::before {
+  background: none;
+  animation: none;
+}
+.max-level-preview--locked .max-level-preview__crown {
+  filter: grayscale(1) brightness(0.4);
+  opacity: 0.5;
+}
+.max-level-preview--locked div[style*="font-size:24px"] {
+  color: var(--text-2) !important;
+}
+.max-level-preview--locked div[style*="font-size:12px"] {
+  color: var(--text-2) !important;
+}
 
 /* ============================================================
    Charts (ECharts 容器)
@@ -1018,4 +1037,52 @@ input, select, textarea { font-family: inherit; color: inherit; }
   font-size: 11px; color: var(--text-0);
   white-space: nowrap; z-index: 100;
   box-shadow: var(--shadow);
+}
+
+/* ============================================================
+   配置组（profiles）— 从 model_helper 融合
+   ============================================================ */
+.profile-env-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+}
+.profile-env-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--bg-2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.profile-env-key {
+  color: var(--text-2);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.profile-env-val {
+  color: var(--text-0);
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  text-align: right;
+}
+.pf-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.pf-field__label {
+  font-size: 11px;
+  color: var(--text-2);
+  min-width: 120px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.pf-field__input {
+  flex: 1;
+  font-family: 'SF Mono', Menlo, monospace;
+  font-size: 12px;
 }

@@ -5,6 +5,7 @@ const path = require('node:path');
 const fs   = require('node:fs');
 const { spawn } = require('node:child_process');
 const { scan, expandHome } = require('./scanner');
+const profiles = require('./profile-manager');
 
 const isDev = !app.isPackaged;
 let mainWindow = null;
@@ -354,6 +355,16 @@ ipcMain.handle('models:delete-price', (_e, name) => {
   scannerCache.ts = 0; scannerCache.data = null;
   return { ok: true };
 });
+
+// 配置组管理（从 model_helper 融合）
+ipcMain.handle('profiles:list',    () => profiles.list());
+ipcMain.handle('profiles:get',     (_e, name) => profiles.get(name));
+ipcMain.handle('profiles:add',     (_e, p) => profiles.add(p));
+ipcMain.handle('profiles:update',  (_e, name, patch) => profiles.update(name, patch));
+ipcMain.handle('profiles:delete',  (_e, name) => profiles.remove(name));
+ipcMain.handle('profiles:switch',  (_e, name) => profiles.switchTo(name));
+ipcMain.handle('profiles:current', () => profiles.current());
+ipcMain.handle('profiles:env-fields', () => profiles.getEnvFields());
 
 // 终端检测
 ipcMain.handle('terminal:detect', async () => {

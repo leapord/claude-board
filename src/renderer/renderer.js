@@ -91,6 +91,7 @@ const routes = {
   levels:        'page-levels',
   heatmap:       'page-heatmap',
   onboarding:    'page-onboarding',
+  profiles:      'page-profiles',
   settings:      'page-settings',
   terminal:      'page-terminal',
   export:        'page-export',
@@ -160,13 +161,15 @@ const SETTINGS_PANEL = {
     </div>
   `,
   appearance: () => `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">主题</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">主题</div><div class="settings__row__label-sub">当前仅支持暗色主题</div></div>
       <div style="display:flex;gap:8px;">
-        <div class="theme-card theme-card--dark active" data-theme="dark"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>🌙 暗色</div></div>
-        <div class="theme-card theme-card--light" style="opacity:0.4;cursor:not-allowed;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>☀️ 亮色 <span class="badge badge--yellow">v0.2</span></div></div>
-        <div class="theme-card theme-card--auto" style="opacity:0.4;cursor:not-allowed;"><div class="theme-card__preview"></div><div>🌓 跟随 <span class="badge badge--yellow">v0.2</span></div></div>
+        <div class="theme-card theme-card--dark active" data-theme="dark"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>🌙 暗色 ✓</div></div>
+        <div class="theme-card theme-card--light" style="opacity:0.35;cursor:not-allowed;" title="即将在后续版本支持"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>☀️ 亮色 <span class="badge badge--yellow">v0.3</span></div></div>
+        <div class="theme-card theme-card--auto" style="opacity:0.35;cursor:not-allowed;" title="即将在后续版本支持"><div class="theme-card__preview"></div><div>🌓 跟随系统 <span class="badge badge--yellow">v0.3</span></div></div>
       </div>
     </div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">动画效果</div><div class="settings__row__label-sub">页面切换和加载动画</div></div>
+      <label class="switch"><input type="checkbox" id="sw-animations" checked /><span class="switch__slider"></span></label></div>
   `,
   shortcuts: () => `
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">打开终端</div></div><div><span class="kbd">⌘</span> <span class="kbd">T</span></div></div>
@@ -177,11 +180,19 @@ const SETTINGS_PANEL = {
   about: () => `
     <div class="about-card">
       <div class="about-card__name">Claude Board</div>
-      <div class="about-card__ver" id="settings-version-2">v0.1</div>
+      <div class="about-card__ver" id="settings-version-2">${esc(State.settings?._version || '0.2.0')}</div>
       <div class="about-card__desc">跨平台 AI 使用追踪 · Claude Code 仪表板</div>
     </div>
-    <div class="settings__row" style="margin-top:16px;"><div class="settings__row__label"><div class="settings__row__label-main">版本信息</div></div><div id="settings-version">v0.1 · darwin</div></div>
+    <div class="settings__row" style="margin-top:16px;"><div class="settings__row__label"><div class="settings__row__label-main">版本信息</div></div><div id="settings-version">${esc(State.settings?._version || '0.2.0')} · ${esc(State.settings?._platform || process?.platform || 'unknown')}</div></div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">技术栈</div></div><div>Electron 31 · contextIsolation · sandbox · CSP</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">配置文件</div></div><div style="font-family:monospace;font-size:11px;color:var(--text-2);">~/.claude/profiles/ · userData/settings.json</div></div>
+    <div class="settings__row" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="btn-open-github">🌐 GitHub</button>
+        <button class="btn" id="btn-open-issues">🐛 反馈问题</button>
+        <button class="btn" id="btn-check-update">↻ 检查更新</button>
+      </div>
+    </div>
   `,
 };
 
@@ -206,6 +217,12 @@ function renderSettings() {
   $('#sw-autoLaunch')?.addEventListener('change', async (e) => { await setSetting({ autoLaunch: e.target.checked }); flashToast('✓ 开机自启已' + (e.target.checked?'开':'关')); });
   $('#sw-minTray')?.addEventListener('change',    async (e) => { await setSetting({ minimizeTray: e.target.checked }); flashToast('✓ 最小化到托盘已' + (e.target.checked?'开':'关')); });
   $('#sel-language')?.addEventListener('change',   async (e) => { await setSetting({ language: e.target.value }); });
+  // 外观 tab
+  $('#sw-animations')?.addEventListener('change', async (e) => {
+    await setSetting({ animations: e.target.checked });
+    document.body.classList.toggle('no-animations', !e.target.checked);
+    flashToast('✓ 动画效果已' + (e.target.checked ? '开启' : '关闭'));
+  });
   // 终端选择（异步加载可用终端列表）
   const termSel = $('#sel-terminal');
   if (termSel) {
@@ -259,6 +276,19 @@ function renderSettings() {
     const p = await cb.dialog.openDirectory({ title: '选择 Claude Code 日志目录' });
     if (p) { $('#input-logs').value = p; await setSetting({ logsPath: p }); flashToast('✓ 日志目录已更新'); }
   });
+  // 路径输入框失焦自动保存
+  $('#input-ws')?.addEventListener('change', async (e) => {
+    if (e.target.value.trim() && e.target.value !== (State.settings?.workspacePath || '')) {
+      await setSetting({ workspacePath: e.target.value.trim() });
+      flashToast('✓ 工作区路径已更新');
+    }
+  });
+  $('#input-logs')?.addEventListener('change', async (e) => {
+    if (e.target.value.trim() && e.target.value !== (State.settings?.logsPath || '')) {
+      await setSetting({ logsPath: e.target.value.trim() });
+      flashToast('✓ 日志目录已更新');
+    }
+  });
   $('#sel-interval')?.addEventListener('change',  async (e) => { await setSetting({ scanInterval: e.target.value }); });
   $('#btn-go-projects')?.addEventListener('click', () => go('projects'));
   $('#btn-clear-data')?.addEventListener('click', async () => {
@@ -272,6 +302,25 @@ function renderSettings() {
       await cb.settings.reset(); State.settings = await cb.settings.get(); renderSettings(); flashToast('✓ 设置已重置');
     }
   });
+  // 关于 tab 按钮
+  $('#btn-open-github')?.addEventListener('click', () => { cb.shell.openPath('https://github.com/leapord/claude-board'); });
+  $('#btn-open-issues')?.addEventListener('click', () => { cb.shell.openPath('https://github.com/leapord/claude-board/issues'); });
+  $('#btn-check-update')?.addEventListener('click', async () => {
+    flashToast('⏳ 正在检查更新…');
+    try {
+      const resp = await fetch('https://api.github.com/repos/leapord/claude-board/releases/latest');
+      const data = await resp.json();
+      const latest = data.tag_name?.replace(/^v/, '') || '';
+      const current = State.settings?._version || '0.2.0';
+      if (latest && latest !== current) {
+        await alertModal({ title: '发现新版本', message: `当前: v${current}，最新: v${latest}`, detail: data.body?.slice(0, 200) || '' });
+      } else {
+        flashToast('✓ 已是最新版本 v' + current);
+      }
+    } catch {
+      flashToast('⚠ 检查更新失败，请稍后再试');
+    }
+  });
 }
 
 
@@ -283,6 +332,7 @@ function onEnter(route) {
     case 'tokens':    renderTokens(); break;
     case 'levels':    renderLevels(); break;
     case 'heatmap':   renderHeatmap90d(); break;
+    case 'profiles':  renderProfiles(); break;
     case 'settings':  renderSettings(); break;
     case 'design-system': renderDesignSystem(); break;
     case 'terminal':  renderTerminal(); break;
@@ -965,6 +1015,211 @@ function showProjectMenu(anchorBtn, projectId) {
   });
 }
 
+// ============================================================
+// 屏 13：配置组（从 model_helper 融合）
+// ============================================================
+const ENV_LABELS = {
+  ANTHROPIC_BASE_URL: 'Base URL',
+  ANTHROPIC_AUTH_TOKEN: 'Auth Token',
+  ANTHROPIC_MODEL: '默认模型',
+  ANTHROPIC_DEFAULT_HAIKU_MODEL: 'Haiku',
+  ANTHROPIC_DEFAULT_SONNET_MODEL: 'Sonnet',
+  ANTHROPIC_DEFAULT_OPUS_MODEL: 'Opus',
+  CLAUDE_CODE_SUBAGENT_MODEL: 'Subagent',
+  API_TIMEOUT_MS: '超时(ms)',
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '禁用流量',
+};
+
+async function renderProfiles() {
+  // 1. 当前生效配置
+  const currentEnv = await cb.profiles.current();
+  const envWrap = $('#profile-current-env');
+  if (envWrap) {
+    const keys = Object.keys(currentEnv);
+    if (keys.length === 0) {
+      envWrap.innerHTML = '<div style="color:var(--text-2);padding:8px;font-size:12px;">当前无生效的 ENV 配置</div>';
+    } else {
+      envWrap.innerHTML = '<div class="profile-env-grid">' + keys.map(k => `
+        <div class="profile-env-item">
+          <span class="profile-env-key">${esc(ENV_LABELS[k] || k)}</span>
+          <span class="profile-env-val">${esc(k === 'ANTHROPIC_AUTH_TOKEN' && currentEnv[k] ? '***' + String(currentEnv[k]).slice(-6) : currentEnv[k])}</span>
+        </div>
+      `).join('') + '</div>';
+    }
+  }
+
+  // 2. Profile 列表
+  const list = await cb.profiles.list();
+  const badge = $('#badge-profiles');
+  if (badge) badge.textContent = list.length;
+
+  const listEl = $('#profile-list');
+  const emptyEl = $('#profiles-empty');
+
+  if (list.length === 0) {
+    if (listEl) listEl.innerHTML = '';
+    if (emptyEl) emptyEl.hidden = false;
+  } else {
+    if (emptyEl) emptyEl.hidden = true;
+    if (listEl) {
+      listEl.innerHTML = list.map(p => {
+        const hasToken = p.env?.ANTHROPIC_AUTH_TOKEN;
+        const maskedToken = hasToken ? '***' + String(p.env.ANTHROPIC_AUTH_TOKEN).slice(-6) : '—';
+        return `
+          <div class="card" style="margin-bottom:12px;" data-profile-name="${esc(p.name)}">
+            <div class="card__header">
+              <div class="card__title">📦 ${esc(p.name)}</div>
+              <div class="card__hint">${esc(p.description || '无描述')}</div>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <button class="btn btn--primary btn--sm" data-act="switch" data-name="${esc(p.name)}">⚡ 切换</button>
+                <button class="btn btn--sm" data-act="edit" data-name="${esc(p.name)}">✏️ 编辑</button>
+                <button class="btn btn--sm" data-act="delete" data-name="${esc(p.name)}" style="color:var(--red);">🗑️</button>
+              </div>
+            </div>
+            <div class="profile-env-grid" style="margin-top:8px;">
+              <div class="profile-env-item"><span class="profile-env-key">Base URL</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_BASE_URL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">Token</span><span class="profile-env-val">${maskedToken}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">默认模型</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">Haiku</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_HAIKU_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">Sonnet</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_SONNET_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">Opus</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_OPUS_MODEL || '—')}</span></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      // 绑定事件
+      listEl.querySelectorAll('[data-act]').forEach(btn => {
+        if (btn.dataset.bound) return;
+        btn.dataset.bound = '1';
+        const act = btn.dataset.act;
+        const name = btn.dataset.name;
+        if (act === 'switch') btn.addEventListener('click', async () => {
+          const r = await cb.profiles.switchTo(name);
+          if (r.ok) { flashToast('✅ 已切换到 ' + name); renderProfiles(); }
+          else flashToast('⚠ 切换失败: ' + (r.reason || '未知'));
+        });
+        if (act === 'edit') btn.addEventListener('click', () => editProfileModal(name));
+        if (act === 'delete') btn.addEventListener('click', async () => {
+          if (await cb.dialog.confirm({ message: `确定删除配置组 "${name}"？`, detail: '只会删除配置文件，不影响已生效的环境变量。' })) {
+            await cb.profiles.delete(name);
+            flashToast('✓ 已删除 ' + name);
+            renderProfiles();
+          }
+        });
+      });
+    }
+  }
+
+  // 新建按钮事件
+  $('#btn-add-profile')?.addEventListener('click', () => addProfileModal());
+  $('#btn-add-profile-empty')?.addEventListener('click', () => addProfileModal());
+}
+
+// ====== Profile 表单弹窗（统一新建/编辑）======
+const PROFILE_FIELDS = [
+  { key: 'ANTHROPIC_BASE_URL',                       label: 'API Base URL',   ph: 'https://api.anthropic.com' },
+  { key: 'ANTHROPIC_AUTH_TOKEN',                      label: 'Auth Token',     ph: 'sk-ant-...' },
+  { key: 'ANTHROPIC_MODEL',                           label: '默认模型',        ph: 'claude-sonnet-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_HAIKU_MODEL',             label: 'Haiku 模型',     ph: 'claude-haiku-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_SONNET_MODEL',            label: 'Sonnet 模型',    ph: 'claude-sonnet-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_OPUS_MODEL',              label: 'Opus 模型',      ph: 'claude-opus-4-20250514' },
+  { key: 'CLAUDE_CODE_SUBAGENT_MODEL',                label: 'Subagent 模型',  ph: 'claude-haiku-4-20250514' },
+  { key: 'API_TIMEOUT_MS',                            label: '超时 (ms)',      ph: '3000000' },
+  { key: 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',  label: '禁用非必要流量',  ph: '1' },
+];
+
+function showProfileFormModal({ title, nameValue, descValue, envValues, confirmLabel, onConfirm }) {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const fieldsHtml = PROFILE_FIELDS.map(f => `
+      <div class="pf-field">
+        <label class="pf-field__label" for="pf-${f.key}">${esc(f.label)}</label>
+        <input class="input pf-field__input" id="pf-${f.key}" data-key="${f.key}"
+               value="${esc(envValues[f.key] || '')}" placeholder="${esc(f.ph)}" />
+      </div>
+    `).join('');
+
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" style="width:520px;max-height:85vh;display:flex;flex-direction:column;">
+        <div class="modal__title">${esc(title)}</div>
+        <div style="display:flex;gap:8px;margin:8px 0;">
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">配置组名称</div>
+            <input class="input" id="pf-name" value="${esc(nameValue || '')}" placeholder="my-provider"
+                   ${nameValue ? 'style="opacity:0.6;" readonly' : ''} />
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">描述（可选）</div>
+            <input class="input" id="pf-desc" value="${esc(descValue || '')}" placeholder="简短描述" />
+          </div>
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-1);margin:8px 0 4px;">环境变量配置</div>
+        <div class="pf-fields" style="overflow-y:auto;flex:1;padding-right:4px;">
+          ${fieldsHtml}
+        </div>
+        <div class="modal__actions" style="margin-top:12px;flex-shrink:0;">
+          <button class="btn" id="pf-cancel">取消</button>
+          <button class="btn btn--primary" id="pf-ok">${esc(confirmLabel || '保存')}</button>
+        </div>
+      </div>
+    `;
+
+    const close = (val) => { document.body.removeChild(overlay); resolve(val); };
+    overlay.querySelector('#pf-cancel').addEventListener('click', () => close(null));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+
+    overlay.querySelector('#pf-ok').addEventListener('click', () => {
+      const name = overlay.querySelector('#pf-name')?.value?.trim();
+      const desc = overlay.querySelector('#pf-desc')?.value?.trim() || '';
+      if (!name) { overlay.querySelector('#pf-name').style.borderColor = 'var(--red)'; return; }
+      const env = {};
+      overlay.querySelectorAll('.pf-field__input').forEach(input => {
+        const val = input.value.trim();
+        if (val) env[input.dataset.key] = val;
+      });
+      onConfirm({ name, description: desc, env }).then(r => close(r));
+    });
+
+    document.body.appendChild(overlay);
+    setTimeout(() => (overlay.querySelector('#pf-name') || overlay.querySelector('.pf-field__input'))?.focus(), 0);
+  });
+}
+
+async function addProfileModal() {
+  await showProfileFormModal({
+    title: '新建配置组',
+    nameValue: '',
+    descValue: '',
+    envValues: {},
+    confirmLabel: '创建',
+    onConfirm: async ({ name, description, env }) => {
+      const r = await cb.profiles.add({ name, description, env });
+      if (r.ok) { flashToast('✅ 配置组 ' + name + ' 已创建'); renderProfiles(); }
+      else { await alertModal({ title: '创建失败', message: r.reason === 'duplicate' ? '同名配置组已存在' : (r.reason || '未知错误') }); }
+      return r;
+    },
+  });
+}
+
+async function editProfileModal(name) {
+  const p = await cb.profiles.get(name);
+  if (!p) { flashToast('⚠ 配置组不存在'); return; }
+  await showProfileFormModal({
+    title: '编辑配置组 — ' + name,
+    nameValue: name,
+    descValue: p.description || '',
+    envValues: p.env || {},
+    confirmLabel: '保存',
+    onConfirm: async ({ description, env }) => {
+      await cb.profiles.update(name, { description, env });
+      flashToast('✓ 已更新 ' + name);
+      renderProfiles();
+      return { ok: true };
+    },
+  });
+}
+
 
 async function renderModels() {
   const d = await cb.data.getModels();
@@ -1240,6 +1495,22 @@ async function renderLevels() {
   const scholar = $('#level-grid-scholar');
   if (scholar) {
     scholar.innerHTML = generateLevelCards(6, 10, c.lv);
+  }
+  // Lv.99 AI 大牛预览：未达 99 级时灰显
+  const maxPreview = document.querySelector('.max-level-preview');
+  if (maxPreview) {
+    const isMax = c.lv >= 99;
+    maxPreview.classList.toggle('max-level-preview--locked', !isMax);
+    const titleEl = maxPreview.querySelector('div[style*="font-size:24px"]');
+    if (titleEl) {
+      titleEl.textContent = isMax ? '👑 Lv.99 · AI 大牛' : '🔒 Lv.99 · AI 大牛（未解锁）';
+    }
+    const descEl = maxPreview.querySelector('div[style*="font-size:12px"]');
+    if (descEl) {
+      descEl.textContent = isMax
+        ? '满级特殊奖励 · 旋转金冠 + 动态粒子 + 全息光环'
+        : `满级特殊奖励 · 距离解锁还需 ${Math.max(0, (99 * 1240 - c.score)).toLocaleString()} 分`;
+    }
   }
   // 更新段位标题
   const sproutTitle = sprout?.previousElementSibling;

@@ -42,6 +42,11 @@
         </div>
 
         <div class="sidebar__group">
+          <div class="sidebar__label">配置</div>
+          <div class="nav-item" data-route="profiles"><span class="nav-item__icon">🔧</span><span>配置组</span><span class="nav-item__badge" id="badge-profiles">0</span></div>
+        </div>
+
+        <div class="sidebar__group">
           <div class="sidebar__label">系统</div>
           <div class="nav-item" data-route="settings"><span class="nav-item__icon">⚙️</span><span>设置</span></div>
         </div>
@@ -367,6 +372,41 @@
               </div>
             </div>
           </div>
+        </div>
+      </main>
+
+      <!-- ============================================================
+           屏 13：配置组（从 model_helper 融合）
+           ============================================================ -->
+      <main class="main" id="page-profiles">
+        <div class="page-header">
+          <div>
+            <div class="page-header__title">🔧 配置组</div>
+            <div class="page-header__sub">管理 Claude Code 的模型环境配置，一键切换不同供应商</div>
+          </div>
+          <div class="page-header__actions">
+            <button class="btn btn--primary" id="btn-add-profile">+ 新建配置组</button>
+          </div>
+        </div>
+
+        <!-- 当前生效配置 -->
+        <div class="card section" id="profile-current-card">
+          <div class="card__header">
+            <div class="card__title">🟢 当前生效配置</div>
+            <div class="card__hint">来自 ~/.claude/settings.json</div>
+          </div>
+          <div id="profile-current-env"></div>
+        </div>
+
+        <!-- Profile 列表 -->
+        <div class="section" id="profile-list"></div>
+
+        <div class="empty-state" id="profiles-empty" hidden>
+          <div class="empty-state__icon">🔧</div>
+          <div class="empty-state__title">还没有配置组</div>
+          <div class="empty-state__desc">配置组可以保存不同的 Claude Code API 供应商配置（Base URL、Token、模型名等），一键切换无需手动改环境变量。</div>
+          <br/>
+          <button class="btn btn--primary" id="btn-add-profile-empty">+ 创建第一个配置组</button>
         </div>
       </main>
 
