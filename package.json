@@ -29,25 +29,53 @@
       "src/**/*",
       "package.json"
     ],
+    "artifactName": "ClaudeBoard-${version}-${arch}.${ext}",
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "artifactName": "ClaudeBoard-${version}-${arch}.${ext}"
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
-      ]
+        {
+          "target": "nsis",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "artifactName": "ClaudeBoard-Setup-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "ClaudeBoard-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "ClaudeBoard-Portable-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [
-        "AppImage",
-        "deb"
+        {
+          "target": "AppImage",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["arm64", "x64"]
+        }
       ],
-      "category": "Utility"
+      "category": "Utility",
+      "artifactName": "ClaudeBoard-${version}-${arch}.${ext}"
     }
   },
   "dependencies": {
