@@ -108,4 +108,16 @@ contextBridge.exposeInMainWorld('claudeBoard', {
   shell: {
     openPath: (p) => ipcRenderer.invoke('shell:open-path', p),
   },
+
+  // 自动更新
+  updater: {
+    check:    ()     => ipcRenderer.invoke('update:check'),
+    download: ()     => ipcRenderer.invoke('update:download'),
+    install:  ()     => ipcRenderer.invoke('update:install'),
+    onAvailable:    (cb) => { const h = (_, d) => cb(d); ipcRenderer.on('update:available', h); return () => ipcRenderer.removeListener('update:available', h); },
+    onNotAvailable: (cb) => { const h = () => cb(); ipcRenderer.on('update:not-available', h); return () => ipcRenderer.removeListener('update:not-available', h); },
+    onProgress:     (cb) => { const h = (_, d) => cb(d); ipcRenderer.on('update:progress', h); return () => ipcRenderer.removeListener('update:progress', h); },
+    onDownloaded:   (cb) => { const h = (_, d) => cb(d); ipcRenderer.on('update:downloaded', h); return () => ipcRenderer.removeListener('update:downloaded', h); },
+    onError:        (cb) => { const h = (_, d) => cb(d); ipcRenderer.on('update:error', h); return () => ipcRenderer.removeListener('update:error', h); },
+  },
 });

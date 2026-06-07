@@ -1,4 +1,5 @@
 // src/renderer/i18n.js — 轻量 i18n 系统
+// 支持 CommonJS (require) 和浏览器全局变量 (window.ClaudeBoardI18n)
 'use strict';
 
 const LOCALES = {
@@ -351,3 +352,8 @@ function t(key) {
 }
 
 module.exports = { t, setLocale, LOCALES };
+
+// 浏览器全局变量导出（script 标签加载时使用）
+if (typeof window !== 'undefined') {
+  window.ClaudeBoardI18n = { t, setLocale, LOCALES, set currentLocale(v) { currentLocale = v; }, get currentLocale() { return currentLocale; } };
+}

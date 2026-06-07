@@ -148,6 +148,16 @@ input, select, textarea { font-family: inherit; color: inherit; }
 .page-header__title { font-size: 20px; font-weight: 600; }
 .page-header__sub { color: var(--text-2); font-size: 12px; margin-left: 10px; }
 .page-header__actions { margin-left: auto; display: flex; gap: 8px; }
+.page-header__help-btn {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg-3); border: 1px solid var(--border);
+  color: var(--text-1); font-size: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-left: 10px; transition: all 0.15s; line-height: 1;
+}
+.page-header__help-btn:hover {
+  background: var(--bg-4); border-color: var(--accent); color: var(--accent);
+}
 
 /* ============================================================
    通用组件

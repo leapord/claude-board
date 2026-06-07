@@ -11,7 +11,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&
 
 // 模态对话框工具（替代 sandbox 不可用的 window.prompt/alert/confirm）
 // promptModal → string | null（输入）/ confirmModal → boolean（确认）/ alertModal → void
-function promptModal({ title = '输入', message = '', defaultValue = '', placeholder = '', confirmLabel = '确定', cancelLabel = '取消' } = {}) {
+function promptModal({ title = t('confirm'), message = '', defaultValue = '', placeholder = '', confirmLabel = t('confirm'), cancelLabel = t('cancel') } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -39,7 +39,7 @@ function promptModal({ title = '输入', message = '', defaultValue = '', placeh
     setTimeout(() => { input.focus(); input.select(); }, 0);
   });
 }
-function alertModal({ title = '提示', message = '', detail = '', confirmLabel = '好' } = {}) {
+function alertModal({ title = t('confirm'), message = '', detail = '', confirmLabel = t('confirm') } = {}) {
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -65,22 +65,36 @@ function alertModal({ title = '提示', message = '', detail = '', confirmLabel 
 const cb = window.claudeBoard;
 const chartInstances = new Map();
 
-// ====== i18n（内联，避免 require）======
-const I18N = {
-  'zh-CN': { /* 保持已有中文 */ },
-  'en-US': { /* 保持已有英文 */ },
-};
-// 从 i18n.js 加载完整翻译（全局变量方式）
-// 见下方 bootstrap 中的 setLocale 调用
+// ====== i18n（从 i18n.js 全局变量加载）======
+const I18N = window.ClaudeBoardI18n || { LOCALES: { 'zh-CN': {}, 'en-US': {} }, t: (k) => k, setLocale: () => {}, currentLocale: 'zh-CN' };
+let currentLocale = I18N.currentLocale || 'zh-CN';
+function t(key) { return I18N.t(key); }
+function setLocale(locale) { I18N.setLocale(locale); currentLocale = locale; }
 
-// ====== Theme（内联）======
+// ====== Theme（暗色/亮色/跟随系统）======
 function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
 function applyTheme(theme) {
   const effective = theme === 'auto' ? getSystemTheme() : theme;
   document.documentElement.setAttribute('data-theme', effective);
   document.documentElement.classList.toggle('theme-light', effective === 'light');
   document.documentElement.classList.toggle('theme-dark', effective === 'dark');
+  // 更新 ECharts 图表主题色
+  updateChartTheme(effective);
 }
+function updateChartTheme(theme) {
+  const isLight = theme === 'light';
+  echartsBase.backgroundColor = isLight ? '#ffffff' : '#11141b';
+  echartsBase.textStyle.color = isLight ? '#374151' : '#a3a8b8';
+  echartsBase.tooltip.backgroundColor = isLight ? '#ffffff' : '#1f242f';
+  echartsBase.tooltip.borderColor = isLight ? '#d1d5db' : '#2a2f3d';
+  echartsBase.tooltip.textStyle.color = isLight ? '#1a1d26' : '#e6e8ec';
+  // 刷新当前可见图表
+  chartInstances.forEach(c => { try { c.setOption(echartsBase); } catch {} });
+}
+// 监听系统主题变化（auto 模式）
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (State.settings?.theme === 'auto') applyTheme('auto');
+});
 
 // ============================================================
 // 全局 State（settings 镜像，渲染时只读；变更通过 cb.settings.set 持久化）
@@ -133,69 +147,69 @@ function go(route) {
 }
 const settingsUI = { tab: 'general' };
 const SETTINGS_TABS = [
-  { key: 'general',    icon: '🔧', label: '通用' },
-  { key: 'datasource', icon: '📁', label: '数据源' },
-  { key: 'appearance', icon: '🎨', label: '外观' },
-  { key: 'shortcuts',  icon: '⌨️', label: '快捷键' },
-  { key: 'about',      icon: 'ℹ️', label: '关于' },
+  { key: 'general',    icon: '🔧', label: t('settings_general') },
+  { key: 'datasource', icon: '📁', label: t('settings_datasource') },
+  { key: 'appearance', icon: '🎨', label: t('settings_appearance') },
+  { key: 'shortcuts',  icon: '⌨️', label: t('settings_shortcuts') },
+  { key: 'about',      icon: 'ℹ️', label: t('settings_about') },
 ];
 const SETTINGS_PANEL = {
   general: () => `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">开机自启</div><div class="settings__row__label-sub">登录系统时自动启动 Claude Board</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_auto_launch')}</div><div class="settings__row__label-sub">${t('settings_auto_launch_sub')}</div></div>
       <label class="switch"><input type="checkbox" id="sw-autoLaunch" ${State.settings?.autoLaunch ? 'checked' : ''} /><span class="switch__slider"></span></label></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">最小化到托盘</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_min_tray')}</div></div>
       <label class="switch"><input type="checkbox" id="sw-minTray" ${State.settings?.minimizeTray ? 'checked' : ''} /><span class="switch__slider"></span></label></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">启动终端</div><div class="settings__row__label-sub">启动 Claude 时使用的外部终端</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_terminal')}</div><div class="settings__row__label-sub">${t('settings_terminal_sub')}</div></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <select class="select" id="sel-terminal"></select>
-        <button class="btn" id="btn-terminal-rescan" title="重新检测系统终端">↻ 检测</button>
+        <button class="btn" id="btn-terminal-rescan" title="重新检测系统终端">${t('settings_detect')}</button>
       </div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">界面语言</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_language')}</div></div>
       <select class="select" id="sel-language">
         <option value="zh-CN" ${State.settings?.language==='zh-CN'?'selected':''}>简体中文</option>
         <option value="en-US" ${State.settings?.language==='en-US'?'selected':''}>English</option>
       </select></div>
   `,
   datasource: (s) => `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">工作区路径</div><div class="settings__row__label-sub">所有项目扫描的根目录</div></div>
-      <div class="path-input"><input class="input" id="input-ws" value="${esc(s?.workspacePath||'')}" /><button class="btn" id="btn-browse-ws">📁 浏览</button></div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">Claude Code 日志目录</div><div class="settings__row__label-sub">读取会话历史和 token 消耗</div></div>
-      <div class="path-input"><input class="input" id="input-logs" value="${esc(s?.logsPath||'')}" /><button class="btn" id="btn-browse-logs">📁 浏览</button></div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">扫描频率</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_ws_path')}</div><div class="settings__row__label-sub">${t('settings_ws_path_sub')}</div></div>
+      <div class="path-input"><input class="input" id="input-ws" value="${esc(s?.workspacePath||'')}" /><button class="btn" id="btn-browse-ws">${t('settings_browse')}</button></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_logs_path')}</div><div class="settings__row__label-sub">${t('settings_logs_path_sub')}</div></div>
+      <div class="path-input"><input class="input" id="input-logs" value="${esc(s?.logsPath||'')}" /><button class="btn" id="btn-browse-logs">${t('settings_browse')}</button></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_scan_freq')}</div></div>
       <select class="select" id="sel-interval">
         <option value="5min" ${s?.scanInterval==='5min'?'selected':''}>5 分钟</option>
         <option value="15min" ${s?.scanInterval==='15min'?'selected':''}>15 分钟</option>
         <option value="1hour" ${s?.scanInterval==='1hour'?'selected':''}>1 小时</option>
         <option value="manual" ${s?.scanInterval==='manual'?'selected':''}>手动</option>
       </select></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">项目管理</div><div class="settings__row__label-sub">在"项目"菜单手动添加 Claude Code 工作目录</div></div>
-      <button class="btn" id="btn-go-projects">📁 打开项目管理</button></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_project_mgmt')}</div><div class="settings__row__label-sub">${t('settings_project_mgmt_sub')}</div></div>
+      <button class="btn" id="btn-go-projects">${t('settings_go_projects')}</button></div>
     <div class="settings__row" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
       <div style="display:flex;gap:8px;">
-        <button class="btn" id="btn-clear-data">清空扫描缓存</button>
-        <button class="btn btn--danger" id="btn-reset-settings">重置所有设置</button>
+        <button class="btn" id="btn-clear-data">${t('settings_clear_cache')}</button>
+        <button class="btn btn--danger" id="btn-reset-settings">${t('settings_reset')}</button>
       </div>
     </div>
   `,
   appearance: () => {
     const cur = State.settings?.theme || 'dark';
     return `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">主题</div><div class="settings__row__label-sub">选择界面外观主题</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_theme')}</div><div class="settings__row__label-sub">${t('settings_theme_sub')}</div></div>
       <div style="display:flex;gap:8px;">
-        <div class="theme-card theme-card--dark ${cur==='dark'?'active':''}" data-theme="dark" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>🌙 暗色${cur==='dark'?' ✓':''}</div></div>
-        <div class="theme-card theme-card--light ${cur==='light'?'active':''}" data-theme="light" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>☀️ 亮色${cur==='light'?' ✓':''}</div></div>
-        <div class="theme-card theme-card--auto ${cur==='auto'?'active':''}" data-theme="auto" style="cursor:pointer;"><div class="theme-card__preview"></div><div>🌓 跟随系统${cur==='auto'?' ✓':''}</div></div>
+        <div class="theme-card theme-card--dark ${cur==='dark'?'active':''}" data-theme="dark" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>${t('settings_theme_dark')}${cur==='dark'?' ✓':''}</div></div>
+        <div class="theme-card theme-card--light ${cur==='light'?'active':''}" data-theme="light" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>${t('settings_theme_light')}${cur==='light'?' ✓':''}</div></div>
+        <div class="theme-card theme-card--auto ${cur==='auto'?'active':''}" data-theme="auto" style="cursor:pointer;"><div class="theme-card__preview"></div><div>${t('settings_theme_auto')}${cur==='auto'?' ✓':''}</div></div>
       </div>
     </div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">动画效果</div><div class="settings__row__label-sub">页面切换和加载动画</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_animations')}</div><div class="settings__row__label-sub">${t('settings_animations_sub')}</div></div>
       <label class="switch"><input type="checkbox" id="sw-animations" ${State.settings?.animations !== false ? 'checked' : ''} /><span class="switch__slider"></span></label></div>
     `;
   },
   shortcuts: () => `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">打开终端</div></div><div><span class="kbd">⌘</span> <span class="kbd">T</span></div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">刷新数据</div></div><div><span class="kbd">⌘</span> <span class="kbd">R</span></div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">设置</div></div><div><span class="kbd">⌘</span> <span class="kbd">,</span></div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">最大化</div></div><div><span class="kbd">⌘</span> <span class="kbd">Shift</span> <span class="kbd">B</span></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_shortcut_terminal')}</div></div><div><span class="kbd">⌘</span> <span class="kbd">T</span></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_shortcut_refresh')}</div></div><div><span class="kbd">⌘</span> <span class="kbd">R</span></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_shortcut_settings')}</div></div><div><span class="kbd">⌘</span> <span class="kbd">,</span></div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_shortcut_maximize')}</div></div><div><span class="kbd">⌘</span> <span class="kbd">Shift</span> <span class="kbd">B</span></div></div>
   `,
   about: () => `
     <div class="about-card">
@@ -203,14 +217,14 @@ const SETTINGS_PANEL = {
       <div class="about-card__ver" id="settings-version-2">${esc(State.settings?._version || '0.2.0')}</div>
       <div class="about-card__desc">跨平台 AI 使用追踪 · Claude Code 仪表板</div>
     </div>
-    <div class="settings__row" style="margin-top:16px;"><div class="settings__row__label"><div class="settings__row__label-main">版本信息</div></div><div id="settings-version">${esc(State.settings?._version || '0.2.0')} · ${esc(State.settings?._platform || process?.platform || 'unknown')}</div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">技术栈</div></div><div>Electron 31 · contextIsolation · sandbox · CSP</div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">配置文件</div></div><div style="font-family:monospace;font-size:11px;color:var(--text-2);">~/.claude/profiles/ · userData/settings.json</div></div>
+    <div class="settings__row" style="margin-top:16px;"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_version_info')}</div></div><div id="settings-version">${esc(State.settings?._version || '0.2.0')} · ${esc(State.settings?._platform || process?.platform || 'unknown')}</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_tech_stack')}</div></div><div>Electron 31 · contextIsolation · sandbox · CSP</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_config_files')}</div></div><div style="font-family:monospace;font-size:11px;color:var(--text-2);">~/.claude/profiles/ · userData/settings.json</div></div>
     <div class="settings__row" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
       <div style="display:flex;gap:8px;">
-        <button class="btn" id="btn-open-github">🌐 GitHub</button>
-        <button class="btn" id="btn-open-issues">🐛 反馈问题</button>
-        <button class="btn" id="btn-check-update">↻ 检查更新</button>
+        <button class="btn" id="btn-open-github">${t('settings_github')}</button>
+        <button class="btn" id="btn-open-issues">${t('settings_feedback')}</button>
+        <button class="btn" id="btn-check-update">${t('settings_check_update')}</button>
       </div>
     </div>
   `,
@@ -236,7 +250,13 @@ function renderSettings() {
   // 通用 tab
   $('#sw-autoLaunch')?.addEventListener('change', async (e) => { await setSetting({ autoLaunch: e.target.checked }); flashToast('✓ 开机自启已' + (e.target.checked?'开':'关')); });
   $('#sw-minTray')?.addEventListener('change',    async (e) => { await setSetting({ minimizeTray: e.target.checked }); flashToast('✓ 最小化到托盘已' + (e.target.checked?'开':'关')); });
-  $('#sel-language')?.addEventListener('change',   async (e) => { await setSetting({ language: e.target.value }); });
+  $('#sel-language')?.addEventListener('change',   async (e) => {
+    await setSetting({ language: e.target.value });
+    setLocale(e.target.value);
+    // 刷新当前路由以应用新语言
+    renderSettings();
+    flashToast('✓ 语言已切换');
+  });
   // 外观 tab
   $('#sw-animations')?.addEventListener('change', async (e) => {
     await setSetting({ animations: e.target.checked });
@@ -250,7 +270,7 @@ function renderSettings() {
       await setSetting({ theme });
       applyTheme(theme);
       renderSettings(); // 刷新面板状态
-      flashToast('✓ 主题已切换为 ' + ({dark:'暗色',light:'亮色',auto:'跟随系统'}[theme] || theme));
+      flashToast('✓ ' + ({dark:t('settings_theme_dark'),light:t('settings_theme_light'),auto:t('settings_theme_auto')}[theme] || theme));
     });
   });
   // 终端选择（异步加载可用终端列表）
@@ -338,17 +358,28 @@ function renderSettings() {
   $('#btn-check-update')?.addEventListener('click', async () => {
     flashToast('⏳ 正在检查更新…');
     try {
-      const resp = await fetch('https://api.github.com/repos/leapord/claude-board/releases/latest');
-      const data = await resp.json();
-      const latest = data.tag_name?.replace(/^v/, '') || '';
-      const current = State.settings?._version || '0.2.0';
-      if (latest && latest !== current) {
-        await alertModal({ title: '发现新版本', message: `当前: v${current}，最新: v${latest}`, detail: data.body?.slice(0, 200) || '' });
+      const r = await cb.updater.check();
+      if (!r.ok) { flashToast('⚠ 检查失败: ' + r.reason); return; }
+      if (r.latestVersion && r.latestVersion !== r.currentVersion) {
+        const doDownload = await alertModal({
+          title: t('update_available'),
+          message: `${t('update_current')}: v${r.currentVersion}  →  ${t('update_latest')}: v${r.latestVersion}`,
+          detail: '点击确定后开始下载更新',
+          confirmLabel: t('update_download'),
+        });
+        // alertModal always resolves (single button), so we show download progress inline
+        flashToast('⏳ 开始下载 v' + r.latestVersion + '…');
+        const dr = await cb.updater.download();
+        if (dr.ok) {
+          flashToast('✅ 下载完成，重启后生效');
+        } else {
+          flashToast('⚠ 下载失败: ' + dr.reason);
+        }
       } else {
-        flashToast('✓ 已是最新版本 v' + current);
+        flashToast('✓ 已是最新版本 v' + (r.currentVersion || '0.3.0'));
       }
-    } catch {
-      flashToast('⚠ 检查更新失败，请稍后再试');
+    } catch (e) {
+      flashToast('⚠ 检查更新失败: ' + (e.message || '未知错误'));
     }
   });
 }
@@ -432,8 +463,8 @@ async function refreshSidebarHeatmap() {
   while (cells.length < 105) cells.unshift('<div class="heatmap-mini__cell"></div>');
   wrap.innerHTML = cells.join('');
   const total = heatmap.reduce((s, [_, v]) => s + v, 0);
-  $('#heatmap-365-count').textContent = `365天 · ${heatmap.filter(([_, v]) => v > 0).length}`;
-  $('#brand-status').textContent = `已加载 ${d?.stats?.[0]?.value || 0} 条今日记录`;
+  $('#heatmap-365-count').textContent = `365d · ${heatmap.filter(([_, v]) => v > 0).length}`;
+  $('#brand-status').textContent = `${t("sb_ready")} · ${d?.stats?.[0]?.value || 0}`;
 }
 
 // ============================================================
@@ -508,18 +539,18 @@ const ONBOARDING_STEPS = [
     sub: '选择你用 Claude Code 打开的项目目录',
     body: () => `
       <div class="field">
-        <div class="field__label">Claude Code 日志目录</div>
+        <div class="field__label">${t('settings_logs_path')}</div>
         <div class="path-input">
           <input class="input" id="ob-logs" value="${esc(State.settings?.logsPath || '~/.claude/projects')}" />
-          <button class="btn" id="ob-browse-logs">📁 浏览</button>
+          <button class="btn" id="ob-browse-logs">${t('settings_browse')}</button>
         </div>
         <div class="field__hint">默认 ~/.claude/projects，Claude Code 会自动在此记录会话</div>
       </div>
       <div class="field">
-        <div class="field__label">工作区根目录</div>
+        <div class="field__label">${t('settings_ws_path')}</div>
         <div class="path-input">
           <input class="input" id="ob-ws" value="${esc(State.settings?.workspacePath || '~/Workspace')}" />
-          <button class="btn" id="ob-browse-ws">📁 浏览</button>
+          <button class="btn" id="ob-browse-ws">${t('settings_browse')}</button>
         </div>
         <div class="field__hint">你的项目代码存放的根目录</div>
       </div>
@@ -532,11 +563,11 @@ const ONBOARDING_STEPS = [
       <div class="theme-pick">
         <div class="theme-card theme-card--dark active">
           <div class="theme-card__preview"><div></div><div></div><div></div></div>
-          <div>🌙 暗色</div>
+          <div>${t('settings_theme_dark')}</div>
         </div>
         <div class="theme-card theme-card--light" style="opacity:0.4;cursor:not-allowed;">
           <div class="theme-card__preview"><div></div><div></div><div></div></div>
-          <div>☀️ 亮色 <span class="badge badge--yellow">v0.2</span></div>
+          <div>${t('settings_theme_light')} <span class="badge badge--yellow">v0.2</span></div>
         </div>
         <div class="theme-card theme-card--auto" style="opacity:0.4;cursor:not-allowed;">
           <div class="theme-card__preview"></div>
@@ -554,10 +585,10 @@ const ONBOARDING_STEPS = [
         <p style="margin-top:8px;">数据会自动从日志目录读取并展示在概览页。</p>
         <p>你可以随时在设置中修改配置。</p>
         <div style="margin-top:20px;display:flex;gap:8px;justify-content:center;">
-          <span class="badge badge--green">📊 概览</span>
-          <span class="badge badge--blue">📁 项目</span>
-          <span class="badge badge--purple">🖥️ 终端</span>
-          <span class="badge badge--yellow">⚙️ 设置</span>
+          <span class="badge badge--green">📊 ${t('nav_overview')}</span>
+          <span class="badge badge--blue">📁 ${t('nav_projects')}</span>
+          <span class="badge badge--purple">🖥️ ${t('terminal_title')}</span>
+          <span class="badge badge--yellow">⚙️ ${t('nav_settings')}</span>
         </div>
       </div>
     `,
@@ -724,8 +755,8 @@ async function renderOverview() {
       pl.innerHTML = `
         <div class="overview-empty">
           <div class="overview-empty__icon">📁</div>
-          <div class="overview-empty__text">还没有配置项目</div>
-          <button class="btn btn--primary btn--sm" data-go-projects>+ 添加项目</button>
+          <div class="overview-empty__text">${t('overview_no_projects')}</div>
+          <button class="btn btn--primary btn--sm" data-go-projects>${t('overview_add_project')}</button>
         </div>
       `;
       pl.querySelector('[data-go-projects]')?.addEventListener('click', () => go('projects'));
@@ -763,7 +794,7 @@ async function renderOverview() {
   if (al) {
     const acts = d.recentActivities || [];
     if (acts.length === 0) {
-      al.innerHTML = `<div class="overview-empty" style="padding:24px 12px;font-size:12px;color:var(--text-2);">最近一周还没有项目活动</div>`;
+      al.innerHTML = `<div class="overview-empty" style="padding:24px 12px;font-size:12px;color:var(--text-2);">${t('overview_no_activities')}</div>`;
     } else {
       al.innerHTML = acts.map(a => `
         <div class="activity-item">
@@ -781,7 +812,7 @@ async function renderOverview() {
   $('#sb-tokens').textContent   = (d.stats?.[3]?.value || '0').toString();
   $('#sb-level').textContent    = `Lv.${(await cb.data.getLevels())?.current?.lv || 1}`;
   // 数据源标记
-  const sourceLabel = meta.source === 'real' ? '📂 真数据' : '🎲 模拟数据';
+  const sourceLabel = meta.source === 'real' ? t('overview_real_data') : t('overview_mock_data');
   const brand = $('#brand-status');
   if (brand) brand.textContent = `${sourceLabel} · ${meta.sessionsScanned || 0} 对话 · 源 ${meta.logsPath || '~'}`;
   // 同步 sidebar badges（修复 HTML 硬编码）
@@ -849,7 +880,7 @@ function renderProjectCard(p, isCurrent, view) {
         <span class="project-row__icon">📁</span>
         <span class="project-row__name">${esc(p.name)}${isCurrent ? '<span class="project-card__badge" style="margin-left:6px;">当前</span>' : ''}</span>
         <span class="project-row__path">${esc(p.path)}</span>
-        <span class="project-row__meta">${esc(p.turns || p.sessions || 0)} 对话 · ${fmtTok(p.inTok || 0)}</span>
+        <span class="project-row__meta">${esc(p.turns || p.sessions || 0)} ${t('projects_sessions')} · ${fmtTok(p.inTok || 0)}</span>
         <span class="project-row__time">${esc(humanTime(p.lastOpenedAt))}</span>
         <span class="project-row__actions">
           <button class="btn btn--primary btn--sm" data-act="launch" title="启动 Claude">▶ Claude</button>
@@ -861,7 +892,7 @@ function renderProjectCard(p, isCurrent, view) {
   }
   // card view (default)
   const meta = [
-    `<span><b>${esc(p.turns || p.sessions || 0)}</b> 对话</span>`,
+    `<span><b>${esc(p.turns || p.sessions || 0)}</b> ${t('projects_sessions')}</span>`,
     `<span><b>${fmtTok(p.inTok || 0)}</b> tokens</span>`,
     `<span>最后打开 <b>${esc(humanTime(p.lastOpenedAt))}</b></span>`,
     `<span>添加于 <b>${(p.addedAt || '').slice(0, 10)}</b></span>`,
@@ -880,10 +911,10 @@ function renderProjectCard(p, isCurrent, view) {
       </div>
       <div class="project-card__meta">${meta}</div>
       <div class="project-card__actions">
-        <button class="btn btn--primary" data-act="launch" title="在终端中启动 Claude">▶ 启动 Claude</button>
-        <button class="btn" data-act="finder" title="在 Finder 中显示">📂 Finder</button>
-        <button class="btn" data-act="copy" title="复制路径">📋 路径</button>
-        <button class="btn" data-act="more" title="更多">⋯</button>
+        <button class="btn btn--primary" data-act="launch" title="在终端中启动 Claude">▶ ${t('projects_launch')}</button>
+        <button class="btn" data-act="finder" title="在 Finder 中显示">${t('projects_finder')}</button>
+        <button class="btn" data-act="copy" title="复制路径">${t('projects_copy_path')}</button>
+        <button class="btn" data-act="more" title="更多">${t('projects_more')}</button>
       </div>
     </div>
   `;
@@ -981,7 +1012,7 @@ async function showAddProjectModal() {
     message: '为这个项目命名（可选，留空取目录最后一段）：',
     defaultValue: path.split('/').pop() || '',
     placeholder: '项目名',
-    confirmLabel: '添加',
+    confirmLabel: t('confirm'),
   });
   if (name === null) return;
   const r = await cb.projects.add({ name: name.trim(), path });
@@ -1019,7 +1050,7 @@ function showProjectMenu(anchorBtn, projectId) {
       if (await cb.dialog.confirm({
         message: `确定删除 ${proj?.name || '此项目'}？`,
         detail: '这只会从 Claude Board 中移除配置，不会删除磁盘上的目录或 Claude Code 日志。',
-        confirmLabel: '删除',
+        confirmLabel: t('delete'),
       })) {
         await cb.projects.remove(projectId);
         flashToast('✓ 已删除');
@@ -1033,7 +1064,7 @@ function showProjectMenu(anchorBtn, projectId) {
         title: '重命名项目',
         defaultValue: proj?.name || '',
         placeholder: '项目名',
-        confirmLabel: '保存',
+        confirmLabel: t('save'),
       });
       if (newName && newName.trim()) {
         const s = await cb.settings.get();
@@ -1067,7 +1098,7 @@ async function renderProfiles() {
   if (envWrap) {
     const keys = Object.keys(currentEnv);
     if (keys.length === 0) {
-      envWrap.innerHTML = '<div style="color:var(--text-2);padding:8px;font-size:12px;">当前无生效的 ENV 配置</div>';
+      envWrap.innerHTML = '<div style="color:var(--text-2);padding:8px;font-size:12px;">' + t('profiles_no_env') + '</div>';
     } else {
       envWrap.innerHTML = '<div class="profile-env-grid">' + keys.map(k => `
         <div class="profile-env-item">
@@ -1101,8 +1132,8 @@ async function renderProfiles() {
               <div class="card__title">📦 ${esc(p.name)}</div>
               <div class="card__hint">${esc(p.description || '无描述')}</div>
               <div style="margin-left:auto;display:flex;gap:6px;">
-                <button class="btn btn--primary btn--sm" data-act="switch" data-name="${esc(p.name)}">⚡ 切换</button>
-                <button class="btn btn--sm" data-act="edit" data-name="${esc(p.name)}">✏️ 编辑</button>
+                <button class="btn btn--primary btn--sm" data-act="switch" data-name="${esc(p.name)}">${t("profiles_switch")}</button>
+                <button class="btn btn--sm" data-act="edit" data-name="${esc(p.name)}">${t("profiles_edit")}</button>
                 <button class="btn btn--sm" data-act="delete" data-name="${esc(p.name)}" style="color:var(--red);">🗑️</button>
               </div>
             </div>
@@ -1175,21 +1206,21 @@ function showProfileFormModal({ title, nameValue, descValue, envValues, confirmL
         <div class="modal__title">${esc(title)}</div>
         <div style="display:flex;gap:8px;margin:8px 0;">
           <div style="flex:1;">
-            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">配置组名称</div>
+            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">${t("profiles_form_name")}</div>
             <input class="input" id="pf-name" value="${esc(nameValue || '')}" placeholder="my-provider"
                    ${nameValue ? 'style="opacity:0.6;" readonly' : ''} />
           </div>
           <div style="flex:1;">
-            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">描述（可选）</div>
-            <input class="input" id="pf-desc" value="${esc(descValue || '')}" placeholder="简短描述" />
+            <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">${t("profiles_form_desc")}</div>
+            <input class="input" id="pf-desc" value="${esc(descValue || '')}" placeholder="${t("profiles_form_desc_ph")}" />
           </div>
         </div>
-        <div style="font-size:12px;font-weight:600;color:var(--text-1);margin:8px 0 4px;">环境变量配置</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text-1);margin:8px 0 4px;">${t("profiles_form_env")}</div>
         <div class="pf-fields" style="overflow-y:auto;flex:1;padding-right:4px;">
           ${fieldsHtml}
         </div>
         <div class="modal__actions" style="margin-top:12px;flex-shrink:0;">
-          <button class="btn" id="pf-cancel">取消</button>
+          <button class="btn" id="pf-cancel">${t("profiles_form_cancel")}</button>
           <button class="btn btn--primary" id="pf-ok">${esc(confirmLabel || '保存')}</button>
         </div>
       </div>
@@ -1218,11 +1249,11 @@ function showProfileFormModal({ title, nameValue, descValue, envValues, confirmL
 
 async function addProfileModal() {
   await showProfileFormModal({
-    title: '新建配置组',
+    title: t('profiles_form_title_new'),
     nameValue: '',
     descValue: '',
     envValues: {},
-    confirmLabel: '创建',
+    confirmLabel: t('profiles_form_create'),
     onConfirm: async ({ name, description, env }) => {
       const r = await cb.profiles.add({ name, description, env });
       if (r.ok) { flashToast('✅ 配置组 ' + name + ' 已创建'); renderProfiles(); }
@@ -1236,11 +1267,11 @@ async function editProfileModal(name) {
   const p = await cb.profiles.get(name);
   if (!p) { flashToast('⚠ 配置组不存在'); return; }
   await showProfileFormModal({
-    title: '编辑配置组 — ' + name,
+    title: t('profiles_form_title_edit') + name,
     nameValue: name,
     descValue: p.description || '',
     envValues: p.env || {},
-    confirmLabel: '保存',
+    confirmLabel: t('profiles_form_save'),
     onConfirm: async ({ description, env }) => {
       await cb.profiles.update(name, { description, env });
       flashToast('✓ 已更新 ' + name);
@@ -1265,7 +1296,7 @@ async function renderModels() {
           <span>${esc(m.inTok)} in / ${esc(m.outTok)} out</span>
         </div>
         <div class="model-card__cost">${esc(m.cost)}</div>
-        <button class="btn" style="margin-top:4px;" data-model-detail="${esc(m.name)}">查看详情 →</button>
+        <button class="btn" style="margin-top:4px;" data-model-detail="${esc(m.name)}">${t("models_detail")}</button>
       </div>
     `).join('');
     // "查看详情" 按钮 → 跳到 tokens 屏
@@ -1506,8 +1537,8 @@ async function renderLevels() {
     if (fill) fill.style.width = `${Math.min(100, (c.score / c.target) * 100).toFixed(1)}%`;
     const text = hero.querySelector('.level-info__progress-text');
     if (text) {
-      text.children[0].textContent = `${c.score.toLocaleString()} / ${c.target.toLocaleString()} 分`;
-      text.children[1].textContent = c.target > c.score ? `距 Lv.${c.lv + 1} 还需 ${(c.target - c.score).toLocaleString()} 分` : `已满级`;
+      text.children[0].textContent = `${c.score.toLocaleString()} / ${c.target.toLocaleString()} ${t("levels_points")}`;
+      text.children[1].textContent = c.target > c.score ? `${t("levels_next")} Lv.${c.lv + 1} ${t("levels_need")} ${(c.target - c.score).toLocaleString()} ${t("levels_points")}` : `已满级`;
     }
   }
   const stats = $('.level-stats');
@@ -1533,31 +1564,52 @@ async function renderLevels() {
     maxPreview.classList.toggle('max-level-preview--locked', !isMax);
     const titleEl = maxPreview.querySelector('div[style*="font-size:24px"]');
     if (titleEl) {
-      titleEl.textContent = isMax ? '👑 Lv.99 · AI 大牛' : '🔒 Lv.99 · AI 大牛（未解锁）';
+      titleEl.textContent = isMax ? t('levels_max_unlocked') : t('levels_max_locked');
     }
     const descEl = maxPreview.querySelector('div[style*="font-size:12px"]');
     if (descEl) {
       descEl.textContent = isMax
-        ? '满级特殊奖励 · 旋转金冠 + 动态粒子 + 全息光环'
-        : `满级特殊奖励 · 距离解锁还需 ${Math.max(0, (99 * 1240 - c.score)).toLocaleString()} 分`;
+        ? t('levels_max_reward')
+        : `${t("levels_max_need")} ${Math.max(0, (99 * 1240 - c.score)).toLocaleString()} ${t("levels_points")}`;
     }
   }
   // 更新段位标题
   const sproutTitle = sprout?.previousElementSibling;
   if (sproutTitle) {
     const lock = sproutTitle.querySelector('.level-section__lock');
-    if (lock) lock.textContent = c.lv >= 5 ? '✓ 已全部解锁' : `已解锁 Lv.1-${c.lv}`;
+    if (lock) lock.textContent = c.lv >= 5 ? t('levels_unlocked') : `${t("levels_unlocked")} Lv.1-${c.lv}`;
   }
   const scholarTitle = scholar?.previousElementSibling;
   if (scholarTitle) {
     const lock = scholarTitle.querySelector('.level-section__lock');
     if (lock) {
-      if (c.lv >= 10) lock.textContent = '✓ 已全部解锁';
-      else if (c.lv >= 6) lock.textContent = `Lv.${c.lv} 已解锁 · 需 ${c.target.toLocaleString()} 分达成 Lv.${c.lv + 1}`;
+      if (c.lv >= 10) lock.textContent = t('levels_unlocked');
+      else if (c.lv >= 6) lock.textContent = `Lv.${c.lv} ${t("levels_unlocked")} · ${t("levels_need")} ${c.target.toLocaleString()} ${t("levels_points")} → Lv.${c.lv + 1}`;
       else lock.textContent = `🔒 需 6,200 分`;
     }
   }
 }
+// 等级页帮助按钮：显示升级规则弹窗
+$('#btn-level-help')?.addEventListener('click', () => {
+  alertModal({
+    title: '🏆 升级规则',
+    message:
+      '【积分获取方式】\n' +
+      '· 每次启动 Claude Code 会话：+10 分\n' +
+      '· 每输入 1K tokens：+1 分\n' +
+      '· 每输出 1K tokens：+2 分\n' +
+      '· 每天连续使用：额外 +5 分（连续奖励）\n\n' +
+      '【等级与所需积分】\n' +
+      '· Lv.1-5（萌芽段）：每级需 500-2,500 分\n' +
+      '· Lv.6-10（学者段）：每级需 3,000-6,200 分\n' +
+      '· Lv.11-20（工匠段）：每级需 8,000-25,000 分\n' +
+      '· Lv.21-50（专家段）：每级需 30,000-80,000 分\n' +
+      '· Lv.51-99（大师段）：每级需 100,000-500,000 分\n' +
+      '· Lv.99（AI 大牛）：满级特殊奖励 🏆',
+    confirmLabel: '知道了',
+  });
+});
+
 // 等级名称表（1-10）
 const LEVEL_TITLES = [
   '🌱 嫩芽', '🌿 幼苗', '🍀 三叶', '🌳 小树', '🌲 大树',
@@ -1662,7 +1714,7 @@ async function renderHeatmap90d() {
         ...echartsBase,
         tooltip: {
           ...echartsBase.tooltip,
-          formatter: (p) => p.value ? `${p.value[0]}<br/>活动 <b>${p.value[1]}</b> 次` : '',
+          formatter: (p) => p.value ? `${p.value[0]}<br/><b>${p.value[1]}</b>` : '',
         },
         visualMap: {
           min: 0,
@@ -1755,7 +1807,7 @@ async function renderOverviewHeatmap() {
   if (!wrap) return;
   const d = await cb.data.getOverview();
   const heatmap = (d && d.heatmap) || [];
-  if (!heatmap.length) { wrap.innerHTML = '<div style="color:var(--text-2);padding:20px;">暂无数据</div>'; return; }
+  if (!heatmap.length) { wrap.innerHTML = '<div style="color:var(--text-2);padding:20px;">—</div>'; return; }
 
   // GitHub-style 完整版：53 周 × 7 天 = 371 圆点（点阵）
   // 用 SVG <circle> 渲染（绝对坐标，100% 圆点，避开 CSS 布局坑）
@@ -1827,7 +1879,7 @@ async function renderOverviewHeatmap() {
 
   // 更新副标题
   const summary = $('#overview-heatmap-summary');
-  if (summary) summary.textContent = `过去 365 天 · 活跃 ${heatmap.filter(([_, v]) => v > 0).length} 天`;
+  if (summary) summary.textContent = `${t("overview_heatmap_sub").split("·")[0]}· ${heatmap.filter(([_, v]) => v > 0).length}`;
 
   // 计算多维度统计
   const byDate2 = new Map(heatmap.map(([k, v]) => [k, v]));
@@ -2279,6 +2331,10 @@ async function bootstrap() {
   // 1. 拉设置
   try { State.settings = await cb.settings.get(); console.log('[bootstrap] settings OK'); }
   catch (e) { console.warn('[renderer] settings.get failed:', e.message); State.settings = { workspacePath: '~/Workspace', logsPath: '~/.claude/projects' }; }
+  // 1.5 应用保存的主题
+  applyTheme(State.settings?.theme || 'dark');
+  // 1.6 应用保存的语言
+  if (State.settings?.language) setLocale(State.settings.language);
   // 2. 应用信息
   try {
     const info = await cb.getAppInfo();
@@ -2334,6 +2390,21 @@ async function bootstrap() {
   }
   // 8. 自动定时扫描（根据 scanInterval 设置）
   startAutoScan();
+  // 9. 监听更新事件
+  cb.updater.onAvailable((info) => {
+    flashToast(t('update_available') + ' v' + info.version);
+  });
+  cb.updater.onProgress((p) => {
+    if (p.percent > 0) flashToast(`⬇️ 下载中 ${p.percent.toFixed(0)}%`);
+  });
+  cb.updater.onDownloaded((info) => {
+    alertModal({ title: t('update_ready'), message: `v${info.version} ${t('update_ready')}`, confirmLabel: t('update_install') }).then(() => {
+      cb.updater.install();
+    });
+  });
+  cb.updater.onError((msg) => {
+    flashToast('⚠ 更新错误: ' + msg);
+  });
 }
 
 bootstrap().catch((err) => {

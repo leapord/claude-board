@@ -1,6 +1,6 @@
 // src/main/main.js — Electron 主进程入口
 // v0.1 真实化：scanner + settings 持久化 + native dialogs + 终端执行 + 导出保存
-const { app, BrowserWindow, ipcMain, shell, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, Menu, Tray, nativeImage } = require('electron');
 const path = require('node:path');
 const fs   = require('node:fs');
 const { spawn } = require('node:child_process');
@@ -10,6 +10,7 @@ const { autoUpdater } = require('electron-updater');
 
 const isDev = !app.isPackaged;
 let mainWindow = null;
+let tray = null; // 系统托盘
 const scannerCache = { ts: 0, data: null }; // 30s 缓存避免每次都扫盘
 
 // ====== Settings 持久化 ======
@@ -264,7 +265,53 @@ function createMainWindow() {
   };
   mainWindow.on('resize', saveBounds);
   mainWindow.on('move',   saveBounds);
+  // 关闭窗口时：如果 minimizeTray 开启，隐藏到托盘而非退出
+  mainWindow.on('close', (e) => {
+    const s = readSettings();
+    if (s.minimizeTray && !app.isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
+}
+
+// ====== 系统托盘 ======
+function createTray() {
+  // 托盘图标路径
+  const iconPath = path.join(__dirname, '../../build/tray-icon.png');
+  const appIconPath = path.join(__dirname, '../../build/icon.png');
+  // 优先使用 tray-icon，回退到主 icon
+  const trayIcon = nativeImage.createFromPath(fs.existsSync(iconPath) ? iconPath : appIconPath);
+  // macOS: 缩小到 16x16 适合托盘
+  const sizedIcon = process.platform === 'darwin' ? trayIcon.resize({ width: 16, height: 16 }) : trayIcon;
+
+  tray = new Tray(sizedIcon);
+  tray.setToolTip('Claude Board — AI 使用追踪');
+
+  const contextMenu = Menu.buildFromTemplate([
+    { label: '📊 打开 Claude Board', click: () => showMainWindow() },
+    { type: 'separator' },
+    { label: '↻ 刷新数据', click: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tray:refresh'); } },
+    { type: 'separator' },
+    { label: '⚙️ 设置', click: () => { showMainWindow(); mainWindow?.webContents.executeJavaScript(`go('settings')`).catch(() => {}); } },
+    { type: 'separator' },
+    { label: '退出 Claude Board', click: () => { app.isQuitting = true; app.quit(); } },
+  ]);
+  tray.setContextMenu(contextMenu);
+
+  // macOS: 点击托盘图标显示窗口
+  tray.on('click', () => showMainWindow());
+  // Windows: 双击
+  tray.on('double-click', () => showMainWindow());
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createMainWindow();
+  }
+  mainWindow.show();
+  mainWindow.focus();
 }
 
 // ====== IPC 通道 ======
@@ -800,9 +847,18 @@ app.whenReady().then(async () => {
     ]));
   }
   createMainWindow();
+  createTray(); // 创建系统托盘图标
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
 });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+
+// 退出标记，让 close 事件知道是真的要退出
+app.on('before-quit', () => { app.isQuitting = true; });
+
+app.on('window-all-closed', () => {
+  // 如果有托盘，不退出（macOS 行为也靠托盘保活）
+  if (tray && !tray.isDestroyed()) return;
+  if (process.platform !== 'darwin') app.quit();
+});
 app.on('web-contents-created', (_, contents) => {
   contents.on('will-navigate', (event, navigationUrl) => {
     const u = new URL(navigationUrl);
