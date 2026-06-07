@@ -1,7 +1,7 @@
 {
   "name": "claude-board",
-  "version": "0.1.0",
-  "description": "Claude Board — 跨平台桌面工具",
+  "version": "0.2.0",
+  "description": "Claude Board — 跨平台 AI 使用追踪桌面工具",
   "main": "src/main/main.js",
   "author": "qiyuyang",
   "license": "MIT",
