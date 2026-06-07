@@ -1086,3 +1086,36 @@ input, select, textarea { font-family: inherit; color: inherit; }
   font-family: 'SF Mono', Menlo, monospace;
   font-size: 12px;
 }
+
+/* ============================================================
+   亮色主题
+   ============================================================ */
+html.theme-light, html[data-theme="light"] {
+  --bg-0: #ffffff;
+  --bg-1: #f5f6fa;
+  --bg-2: #ebedf2;
+  --bg-3: #dfe1e8;
+  --text-0: #1a1d26;
+  --text-1: #374151;
+  --text-2: #6b7280;
+  --border: #d1d5db;
+  --border-light: #e5e7eb;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --green: #16a34a;
+  --red: #dc2626;
+  --yellow: #d97706;
+  --purple: #7c3aed;
+  --cyan: #0891b2;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+html.theme-light .sidebar { background: #f0f1f5; border-color: var(--border); }
+html.theme-light .titlebar { background: #f0f1f5; border-color: var(--border); }
+html.theme-light .statusbar { background: #f0f1f5; border-color: var(--border); }
+html.theme-light .card { background: #ffffff; border-color: var(--border); }
+html.theme-light .nav-item:hover { background: rgba(0,0,0,0.04); }
+html.theme-light .nav-item.active { background: rgba(59,130,246,0.08); }
+html.theme-light .modal { background: #ffffff; color: var(--text-0); }
+html.theme-light input, html.theme-light select, html.theme-light textarea { background: #ffffff; color: var(--text-0); border-color: var(--border); }
+html.theme-light .btn { background: var(--bg-2); color: var(--text-0); border-color: var(--border); }
+html.theme-light .btn--primary { background: var(--accent); color: #fff; border-color: var(--accent); }

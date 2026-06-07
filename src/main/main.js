@@ -6,6 +6,7 @@ const fs   = require('node:fs');
 const { spawn } = require('node:child_process');
 const { scan, expandHome } = require('./scanner');
 const profiles = require('./profile-manager');
+const { autoUpdater } = require('electron-updater');
 
 const isDev = !app.isPackaged;
 let mainWindow = null;
@@ -181,6 +182,7 @@ const DEFAULT_SETTINGS = {
   windowBounds:  null,
   configuredProjects: [],   // 用户手动配置的项目（scanner 只读这份列表）
   preferredTerminal: 'auto', // 启动终端偏好：'auto' | 具体终端 id（如 iterm2 / terminal / wt / powershell / cmd）
+  theme: 'dark',              // 'dark' | 'light' | 'auto'
   detectedTerminals: [],    // 首次启动检测到的可用终端列表（缓存，避免重复检测）
 };
 function readSettings() {
@@ -806,4 +808,81 @@ app.on('web-contents-created', (_, contents) => {
     const u = new URL(navigationUrl);
     if (u.origin !== 'null') { event.preventDefault(); shell.openExternal(navigationUrl); }
   });
+});
+
+// ====== Auto-Updater（electron-updater + GitHub Releases）======
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.logger = console;
+
+let updateInfo = null; // 缓存检测到的新版本信息
+
+autoUpdater.on('update-available', (info) => {
+  updateInfo = info;
+  console.log('[updater] update available:', info.version);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:available', {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseNotes: info.releaseNotes?.slice?.(0, 500) || '',
+    });
+  }
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('[updater] up to date');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:not-available');
+  }
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  console.log(`[updater] downloading ${progress.percent.toFixed(1)}%`);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:progress', {
+      percent: progress.percent,
+      transferred: progress.transferred,
+      total: progress.total,
+      speed: progress.bytesPerSecond,
+    });
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[updater] downloaded, ready to install');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:downloaded', { version: info.version });
+  }
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('[updater] error:', err.message);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update:error', err.message);
+  }
+});
+
+// Update IPC
+ipcMain.handle('update:check', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { ok: true, currentVersion: app.getVersion(), latestVersion: result?.updateInfo?.version || null };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
+});
+
+ipcMain.handle('update:download', async () => {
+  try {
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: e.message };
+  }
+});
+
+ipcMain.handle('update:install', () => {
+  // 退出并安装
+  setImmediate(() => autoUpdater.quitAndInstall());
+  return true;
 });

@@ -65,6 +65,23 @@ function alertModal({ title = '提示', message = '', detail = '', confirmLabel 
 const cb = window.claudeBoard;
 const chartInstances = new Map();
 
+// ====== i18n（内联，避免 require）======
+const I18N = {
+  'zh-CN': { /* 保持已有中文 */ },
+  'en-US': { /* 保持已有英文 */ },
+};
+// 从 i18n.js 加载完整翻译（全局变量方式）
+// 见下方 bootstrap 中的 setLocale 调用
+
+// ====== Theme（内联）======
+function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+function applyTheme(theme) {
+  const effective = theme === 'auto' ? getSystemTheme() : theme;
+  document.documentElement.setAttribute('data-theme', effective);
+  document.documentElement.classList.toggle('theme-light', effective === 'light');
+  document.documentElement.classList.toggle('theme-dark', effective === 'dark');
+}
+
 // ============================================================
 // 全局 State（settings 镜像，渲染时只读；变更通过 cb.settings.set 持久化）
 // ============================================================
@@ -160,17 +177,20 @@ const SETTINGS_PANEL = {
       </div>
     </div>
   `,
-  appearance: () => `
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">主题</div><div class="settings__row__label-sub">当前仅支持暗色主题</div></div>
+  appearance: () => {
+    const cur = State.settings?.theme || 'dark';
+    return `
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">主题</div><div class="settings__row__label-sub">选择界面外观主题</div></div>
       <div style="display:flex;gap:8px;">
-        <div class="theme-card theme-card--dark active" data-theme="dark"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>🌙 暗色 ✓</div></div>
-        <div class="theme-card theme-card--light" style="opacity:0.35;cursor:not-allowed;" title="即将在后续版本支持"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>☀️ 亮色 <span class="badge badge--yellow">v0.3</span></div></div>
-        <div class="theme-card theme-card--auto" style="opacity:0.35;cursor:not-allowed;" title="即将在后续版本支持"><div class="theme-card__preview"></div><div>🌓 跟随系统 <span class="badge badge--yellow">v0.3</span></div></div>
+        <div class="theme-card theme-card--dark ${cur==='dark'?'active':''}" data-theme="dark" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>🌙 暗色${cur==='dark'?' ✓':''}</div></div>
+        <div class="theme-card theme-card--light ${cur==='light'?'active':''}" data-theme="light" style="cursor:pointer;"><div class="theme-card__preview"><div></div><div></div><div></div></div><div>☀️ 亮色${cur==='light'?' ✓':''}</div></div>
+        <div class="theme-card theme-card--auto ${cur==='auto'?'active':''}" data-theme="auto" style="cursor:pointer;"><div class="theme-card__preview"></div><div>🌓 跟随系统${cur==='auto'?' ✓':''}</div></div>
       </div>
     </div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">动画效果</div><div class="settings__row__label-sub">页面切换和加载动画</div></div>
-      <label class="switch"><input type="checkbox" id="sw-animations" checked /><span class="switch__slider"></span></label></div>
-  `,
+      <label class="switch"><input type="checkbox" id="sw-animations" ${State.settings?.animations !== false ? 'checked' : ''} /><span class="switch__slider"></span></label></div>
+    `;
+  },
   shortcuts: () => `
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">打开终端</div></div><div><span class="kbd">⌘</span> <span class="kbd">T</span></div></div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">刷新数据</div></div><div><span class="kbd">⌘</span> <span class="kbd">R</span></div></div>
@@ -222,6 +242,16 @@ function renderSettings() {
     await setSetting({ animations: e.target.checked });
     document.body.classList.toggle('no-animations', !e.target.checked);
     flashToast('✓ 动画效果已' + (e.target.checked ? '开启' : '关闭'));
+  });
+  // 主题卡片点击
+  $$('.theme-card[data-theme]').forEach(card => {
+    card.addEventListener('click', async () => {
+      const theme = card.dataset.theme;
+      await setSetting({ theme });
+      applyTheme(theme);
+      renderSettings(); // 刷新面板状态
+      flashToast('✓ 主题已切换为 ' + ({dark:'暗色',light:'亮色',auto:'跟随系统'}[theme] || theme));
+    });
   });
   // 终端选择（异步加载可用终端列表）
   const termSel = $('#sel-terminal');
