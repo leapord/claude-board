@@ -161,7 +161,7 @@ const SETTINGS_PANEL = {
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_terminal')}</div><div class="settings__row__label-sub">${t('settings_terminal_sub')}</div></div>
       <div style="display:flex;gap:8px;align-items:center;">
         <select class="select" id="sel-terminal"></select>
-        <button class="btn" id="btn-terminal-rescan" title="重新检测系统终端">${t('settings_detect')}</button>
+        <button class="btn" id="btn-terminal-rescan" title="${t('settings_detect')}">${t('settings_detect')}</button>
       </div></div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_language')}</div></div>
       <select class="select" id="sel-language">
@@ -176,10 +176,10 @@ const SETTINGS_PANEL = {
       <div class="path-input"><input class="input" id="input-logs" value="${esc(s?.logsPath||'')}" /><button class="btn" id="btn-browse-logs">${t('settings_browse')}</button></div></div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_scan_freq')}</div></div>
       <select class="select" id="sel-interval">
-        <option value="5min" ${s?.scanInterval==='5min'?'selected':''}>5 分钟</option>
-        <option value="15min" ${s?.scanInterval==='15min'?'selected':''}>15 分钟</option>
-        <option value="1hour" ${s?.scanInterval==='1hour'?'selected':''}>1 小时</option>
-        <option value="manual" ${s?.scanInterval==='manual'?'selected':''}>手动</option>
+        <option value="5min" ${s?.scanInterval==='5min'?'selected':''}>${t('settings_5min')}</option>
+        <option value="15min" ${s?.scanInterval==='15min'?'selected':''}>${t('settings_15min')}</option>
+        <option value="1hour" ${s?.scanInterval==='1hour'?'selected':''}>${t('settings_1hour')}</option>
+        <option value="manual" ${s?.scanInterval==='manual'?'selected':''}>${t('settings_manual')}</option>
       </select></div>
     <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_project_mgmt')}</div><div class="settings__row__label-sub">${t('settings_project_mgmt_sub')}</div></div>
       <button class="btn" id="btn-go-projects">${t('settings_go_projects')}</button></div>
@@ -214,11 +214,11 @@ const SETTINGS_PANEL = {
     <div class="about-card">
       <div class="about-card__name">Claude Board</div>
       <div class="about-card__ver" id="settings-version-2">${esc(State.settings?._version || '0.2.0')}</div>
-      <div class="about-card__desc">跨平台 AI 使用追踪 · Claude Code 仪表板</div>
+      <div class="about-card__desc">${t('about_description')}</div>
     </div>
     <div class="settings__row" style="margin-top:16px;"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_version_info')}</div></div><div id="settings-version">${esc(State.settings?._version || '0.2.0')} · ${esc(State.settings?._platform || process?.platform || 'unknown')}</div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_tech_stack')}</div></div><div>Electron 31 · contextIsolation · sandbox · CSP</div></div>
-    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_config_files')}</div></div><div style="font-family:monospace;font-size:11px;color:var(--text-2);">~/.claude/profiles/ · userData/settings.json</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_tech_stack')}</div></div><div>${t('about_electron')}</div></div>
+    <div class="settings__row"><div class="settings__row__label"><div class="settings__row__label-main">${t('settings_config_files')}</div></div><div style="font-family:monospace;font-size:11px;color:var(--text-2);">${t('about_config_path')}</div></div>
     <div class="settings__row" style="margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
       <div style="display:flex;gap:8px;">
         <button class="btn" id="btn-open-github">${t('settings_github')}</button>
@@ -247,8 +247,8 @@ function renderSettings() {
   if (!panel) return;
   panel.innerHTML = (SETTINGS_PANEL[settingsUI.tab] || SETTINGS_PANEL.general)(s);
   // 通用 tab
-  $('#sw-autoLaunch')?.addEventListener('change', async (e) => { await setSetting({ autoLaunch: e.target.checked }); flashToast('✓ 开机自启已' + (e.target.checked?'开':'关')); });
-  $('#sw-minTray')?.addEventListener('change',    async (e) => { await setSetting({ minimizeTray: e.target.checked }); flashToast('✓ 最小化到托盘已' + (e.target.checked?'开':'关')); });
+  $('#sw-autoLaunch')?.addEventListener('change', async (e) => { await setSetting({ autoLaunch: e.target.checked }); flashToast(e.target.checked ? t('toast_auto_launch_on') : t('toast_auto_launch_off')); });
+  $('#sw-minTray')?.addEventListener('change',    async (e) => { await setSetting({ minimizeTray: e.target.checked }); flashToast(e.target.checked ? t('toast_tray_on') : t('toast_tray_off')); });
   $('#sel-language')?.addEventListener('change',   async (e) => {
     await setSetting({ language: e.target.value });
     setLocale(e.target.value);
@@ -256,13 +256,13 @@ function renderSettings() {
     const nav = $('#settings-nav');
     if (nav) delete nav.dataset.rendered;
     renderSettings();
-    flashToast('✓ 语言已切换');
+    flashToast(t('toast_language_switched'));
   });
   // 外观 tab
   $('#sw-animations')?.addEventListener('change', async (e) => {
     await setSetting({ animations: e.target.checked });
     document.body.classList.toggle('no-animations', !e.target.checked);
-    flashToast('✓ 动画效果已' + (e.target.checked ? '开启' : '关闭'));
+    flashToast(e.target.checked ? t('toast_animation_on') : t('toast_animation_off'));
   });
   // 主题卡片点击
   $$('.theme-card[data-theme]').forEach(card => {
@@ -271,7 +271,7 @@ function renderSettings() {
       await setSetting({ theme });
       applyTheme(theme);
       renderSettings(); // 刷新面板状态
-      flashToast('✓ ' + ({dark:t('settings_theme_dark'),light:t('settings_theme_light'),auto:t('settings_theme_auto')}[theme] || theme));
+      flashToast(t('toast_theme_switched') + ({dark:t('settings_theme_dark'),light:t('settings_theme_light'),auto:t('settings_theme_auto')}[theme] || theme));
     });
   });
   // 终端选择（异步加载可用终端列表）
@@ -282,75 +282,75 @@ function renderSettings() {
         const terminals = await cb.terminal.listAvailable();
         const current = State.settings?.preferredTerminal || 'auto';
         // 构建 options
-        let opts = '<option value="auto"' + (current === 'auto' ? ' selected' : '') + '>🔄 自动检测（推荐）</option>';
+        let opts = '<option value="auto"' + (current === 'auto' ? ' selected' : '') + '>' + t('settings_auto_detect') + '</option>';
         for (const t of terminals) {
           opts += `<option value="${esc(t.id)}"` + (current === t.id ? ' selected' : '') + `>${esc(t.label)}</option>`;
         }
         if (terminals.length === 0) {
-          opts += '<option value="" disabled>未检测到终端</option>';
+          opts += '<option value="" disabled>' + t('settings_no_terminal') + '</option>';
         }
         termSel.innerHTML = opts;
       } catch (e) {
-        termSel.innerHTML = '<option value="auto">自动检测</option><option value="" disabled>检测失败</option>';
+        termSel.innerHTML = '<option value="auto">' + t('settings_auto_detect') + '</option><option value="" disabled>' + t('settings_detect_failed') + '</option>';
       }
     })();
     termSel.addEventListener('change', async (e) => {
       await setSetting({ preferredTerminal: e.target.value });
-      flashToast('✓ 启动终端已切换为 ' + (e.target.options[e.target.selectedIndex]?.text || e.target.value));
+      flashToast(t('toast_terminal_switched') + (e.target.options[e.target.selectedIndex]?.text || e.target.value));
     });
   }
   // 重新检测终端
   $('#btn-terminal-rescan')?.addEventListener('click', async () => {
-    flashToast('⏳ 正在检测系统终端…');
+    flashToast(t('toast_detecting'));
     try {
       const terminals = await cb.terminal.detect();
       const sel = $('#sel-terminal');
       if (sel) {
         const current = State.settings?.preferredTerminal || 'auto';
-        let opts = '<option value="auto"' + (current === 'auto' ? ' selected' : '') + '>🔄 自动检测（推荐）</option>';
+        let opts = '<option value="auto"' + (current === 'auto' ? ' selected' : '') + '>' + t('settings_auto_detect') + '</option>';
         for (const t of terminals) {
           opts += `<option value="${esc(t.id)}"` + (current === t.id ? ' selected' : '') + `>${esc(t.label)}</option>`;
         }
         sel.innerHTML = opts;
       }
-      flashToast('✓ 检测完成：' + (terminals.length > 0 ? terminals.map(t => t.label).join('、') : '未检测到终端'));
+      flashToast(t('toast_detect_done') + (terminals.length > 0 ? terminals.map(t => t.label).join('、') : t('toast_detect_none')));
     } catch (e) {
-      flashToast('⚠ 检测失败: ' + e.message);
+      flashToast(t('toast_detect_failed') + e.message);
     }
   });
   // 数据源 tab
   $('#btn-browse-ws')?.addEventListener('click', async () => {
-    const p = await cb.dialog.openDirectory({ title: '选择工作区' });
-    if (p) { $('#input-ws').value = p; await setSetting({ workspacePath: p }); flashToast('✓ 工作区已更新'); }
+    const p = await cb.dialog.openDirectory({ title: t('settings_select_workspace') });
+    if (p) { $('#input-ws').value = p; await setSetting({ workspacePath: p }); flashToast(t('toast_workspace_updated')); }
   });
   $('#btn-browse-logs')?.addEventListener('click', async () => {
-    const p = await cb.dialog.openDirectory({ title: '选择 Claude Code 日志目录' });
-    if (p) { $('#input-logs').value = p; await setSetting({ logsPath: p }); flashToast('✓ 日志目录已更新'); }
+    const p = await cb.dialog.openDirectory({ title: t('settings_select_logs') });
+    if (p) { $('#input-logs').value = p; await setSetting({ logsPath: p }); flashToast(t('toast_logs_updated')); }
   });
   // 路径输入框失焦自动保存
   $('#input-ws')?.addEventListener('change', async (e) => {
     if (e.target.value.trim() && e.target.value !== (State.settings?.workspacePath || '')) {
       await setSetting({ workspacePath: e.target.value.trim() });
-      flashToast('✓ 工作区路径已更新');
+      flashToast(t('toast_workspace_path_updated'));
     }
   });
   $('#input-logs')?.addEventListener('change', async (e) => {
     if (e.target.value.trim() && e.target.value !== (State.settings?.logsPath || '')) {
       await setSetting({ logsPath: e.target.value.trim() });
-      flashToast('✓ 日志目录已更新');
+      flashToast(t('toast_logs_path_updated'));
     }
   });
   $('#sel-interval')?.addEventListener('change',  async (e) => { await setSetting({ scanInterval: e.target.value }); });
   $('#btn-go-projects')?.addEventListener('click', () => go('projects'));
   $('#btn-clear-data')?.addEventListener('click', async () => {
-    if (await cb.dialog.confirm({ message: '确定清空扫描缓存？', detail: '下次访问将重新扫描日志。' })) {
+    if (await cb.dialog.confirm({ message: t('settings_clear_cache_confirm'), detail: t('settings_clear_cache_detail') })) {
       await cb.data.clearCache();
-      flashToast('✓ 缓存已清空');
+      flashToast(t('toast_cache_cleared'));
     }
   });
   $('#btn-reset-settings')?.addEventListener('click', async () => {
-    if (await cb.dialog.confirm({ message: '确定重置所有设置？', detail: '此操作不可撤销。' })) {
-      await cb.settings.reset(); State.settings = await cb.settings.get(); renderSettings(); flashToast('✓ 设置已重置');
+    if (await cb.dialog.confirm({ message: t('settings_reset_confirm'), detail: t('settings_reset_detail') })) {
+      await cb.settings.reset(); State.settings = await cb.settings.get(); renderSettings(); flashToast(t('toast_settings_reset'));
     }
   });
   // 关于 tab 按钮
@@ -365,7 +365,7 @@ function renderSettings() {
         const doDownload = await alertModal({
           title: t('update_available'),
           message: `${t('update_current')}: v${r.currentVersion}  →  ${t('update_latest')}: v${r.latestVersion}`,
-          detail: '点击确定后开始下载更新',
+          detail: t('update_click_download'),
           confirmLabel: t('update_download'),
         });
         // alertModal always resolves (single button), so we show download progress inline
@@ -527,17 +527,17 @@ function startAutoScan() {
 // ============================================================
 const ONBOARDING_STEPS = [
   {
-    emoji: '👋', title: '欢迎使用 Claude Board',
-    sub: '让我们用 4 步把它配置好',
+    emoji: '👋', title: () => t('ob_welcome_title'),
+    sub: () => t('ob_welcome_sub'),
     body: () => `<div style="text-align:center;color:var(--text-1);line-height:1.7;">
-      <p>Claude Board 是一个跨平台桌面工具，</p>
-      <p>帮你追踪 Claude Code 的使用数据。</p>
-      <p style="margin-top:16px;">全部数据本地处理，不上传任何信息。</p>
+      <p>${t('ob_welcome_body1')}</p>
+      <p>${t('ob_welcome_body2')}</p>
+      <p style="margin-top:16px;">${t('ob_welcome_body3')}</p>
     </div>`,
   },
   {
-    emoji: '📁', title: '配置工作区',
-    sub: '选择你用 Claude Code 打开的项目目录',
+    emoji: '📁', title: () => t('ob_workspace_title'),
+    sub: () => t('ob_workspace_sub'),
     body: () => `
       <div class="field">
         <div class="field__label">${t('settings_logs_path')}</div>
@@ -545,7 +545,7 @@ const ONBOARDING_STEPS = [
           <input class="input" id="ob-logs" value="${esc(State.settings?.logsPath || '~/.claude/projects')}" />
           <button class="btn" id="ob-browse-logs">${t('settings_browse')}</button>
         </div>
-        <div class="field__hint">默认 ~/.claude/projects，Claude Code 会自动在此记录会话</div>
+        <div class="field__hint">${t('ob_logs_hint')}</div>
       </div>
       <div class="field">
         <div class="field__label">${t('settings_ws_path')}</div>
@@ -553,13 +553,13 @@ const ONBOARDING_STEPS = [
           <input class="input" id="ob-ws" value="${esc(State.settings?.workspacePath || '~/Workspace')}" />
           <button class="btn" id="ob-browse-ws">${t('settings_browse')}</button>
         </div>
-        <div class="field__hint">你的项目代码存放的根目录</div>
+        <div class="field__hint">${t('ob_ws_hint')}</div>
       </div>
     `,
   },
   {
-    emoji: '🎨', title: '选择主题',
-    sub: 'v0.1 仅支持暗色，后续版本会增加亮色和自动切换',
+    emoji: '🎨', title: () => t('ob_theme_title'),
+    sub: () => t('ob_theme_sub'),
     body: () => `
       <div class="theme-pick">
         <div class="theme-card theme-card--dark active">
@@ -572,19 +572,19 @@ const ONBOARDING_STEPS = [
         </div>
         <div class="theme-card theme-card--auto" style="opacity:0.4;cursor:not-allowed;">
           <div class="theme-card__preview"></div>
-          <div>🌓 跟随 <span class="badge badge--yellow">v0.2</span></div>
+          <div>${t('settings_theme_auto')} <span class="badge badge--yellow">v0.2</span></div>
         </div>
       </div>
     `,
   },
   {
-    emoji: '🚀', title: '配置完成！',
-    sub: '开始追踪你的 AI 使用之旅',
+    emoji: '🚀', title: () => t('ob_done_title'),
+    sub: () => t('ob_done_sub'),
     body: () => `
       <div style="text-align:center;line-height:1.8;color:var(--text-1);">
-        <p>✅ Claude Board 已就绪</p>
-        <p style="margin-top:8px;">数据会自动从日志目录读取并展示在概览页。</p>
-        <p>你可以随时在设置中修改配置。</p>
+        <p>${t('ob_done_body1')}</p>
+        <p style="margin-top:8px;">${t('ob_done_body2')}</p>
+        <p>${t('ob_done_body3')}</p>
         <div style="margin-top:20px;display:flex;gap:8px;justify-content:center;">
           <span class="badge badge--green">📊 ${t('nav_overview')}</span>
           <span class="badge badge--blue">📁 ${t('nav_projects')}</span>
@@ -607,8 +607,8 @@ function renderOnboarding() {
   const prev = $('#onboarding-prev');
   const next = $('#onboarding-next');
   if (emoji) emoji.textContent = step.emoji;
-  if (title) title.textContent = step.title;
-  if (sub) sub.textContent = step.sub;
+  if (title) title.textContent = typeof step.title === 'function' ? step.title() : step.title;
+  if (sub) sub.textContent = typeof step.sub === 'function' ? step.sub() : step.sub;
   if (body) body.innerHTML = step.body();
   if (stepper) {
     stepper.innerHTML = ONBOARDING_STEPS.map((_, i) => {
@@ -619,16 +619,16 @@ function renderOnboarding() {
     }).join('');
   }
   if (prev) prev.style.display = obStep > 0 ? '' : 'none';
-  if (next) next.textContent = obStep === ONBOARDING_STEPS.length - 1 ? '开始使用 🚀' : '下一步 →';
+  if (next) next.textContent = obStep === ONBOARDING_STEPS.length - 1 ? t('ob_start') : t('ob_next');
   // 绑定步骤内交互
   if (obStep === 1) {
     setTimeout(() => {
       $('#ob-browse-logs')?.addEventListener('click', async () => {
-        const p = await cb.dialog.openDirectory({ title: '选择 Claude Code 日志目录' });
+        const p = await cb.dialog.openDirectory({ title: t('ob_select_logs_dir') });
         if (p) { const el = $('#ob-logs'); if (el) el.value = p; }
       });
       $('#ob-browse-ws')?.addEventListener('click', async () => {
-        const p = await cb.dialog.openDirectory({ title: '选择工作区根目录' });
+        const p = await cb.dialog.openDirectory({ title: t('ob_select_ws_dir') });
         if (p) { const el = $('#ob-ws'); if (el) el.value = p; }
       });
     }, 0);
@@ -763,7 +763,7 @@ async function renderOverview() {
       pl.querySelector('[data-go-projects]')?.addEventListener('click', () => go('projects'));
     } else {
       pl.innerHTML = rps.map(p => `
-        <div class="project-row" data-project-path="${esc(p.path)}" title="点击启动 Claude">
+        <div class="project-row" data-project-path="${esc(p.path)}" title="${t('projects_launch_title')}">
           <span class="project-row__star">⭐</span>
           <span class="project-row__name">${esc(p.name)}</span>
           <span class="project-row__path">${esc(p.path)}</span>
@@ -780,8 +780,8 @@ async function renderOverview() {
           const proj = projects.find(p => p.path === path);
           if (proj) {
             const r = await cb.projects.launch(proj.id);
-            if (r?.ok) flashToast('✓ 已在终端启动 Claude');
-            else flashToast('⚠ 启动失败: ' + (r?.reason || '未知'));
+            if (r?.ok) flashToast(t('toast_launched'));
+            else flashToast(t('toast_launch_failed') + (r?.reason || t('unknown_error')));
           } else {
             // 没有配置的项目，直接打开目录
             cb.shell.openPath(path);
@@ -815,7 +815,7 @@ async function renderOverview() {
   // 数据源标记
   const sourceLabel = meta.source === 'real' ? t('overview_real_data') : t('overview_mock_data');
   const brand = $('#brand-status');
-  if (brand) brand.textContent = `${sourceLabel} · ${meta.sessionsScanned || 0} 对话 · 源 ${meta.logsPath || '~'}`;
+  if (brand) brand.textContent = `${sourceLabel} · ${meta.sessionsScanned || 0} ${t('brand_conversations')} · ${t('brand_source')} ${meta.logsPath || '~'}`;
   // 同步 sidebar badges（修复 HTML 硬编码）
   const levels = await cb.data.getLevels();
   updateSidebarBadges({
@@ -832,7 +832,7 @@ $('#btn-refresh')?.addEventListener('click', async () => {
   await cb.data.rescan();
   refreshSidebarHeatmap();
   if (State.currentRoute === 'overview' || State.currentRoute === 'overview') renderOverview();
-  flashToast('✓ 数据已刷新');
+  flashToast(t('toast_data_refreshed'));
 });
 
 // ============================================================
@@ -879,14 +879,14 @@ function renderProjectCard(p, isCurrent, view) {
     return `
       <div class="project-row ${isCurrent ? 'project-row--current' : ''}" data-project-id="${esc(p.id)}">
         <span class="project-row__icon">📁</span>
-        <span class="project-row__name">${esc(p.name)}${isCurrent ? '<span class="project-card__badge" style="margin-left:6px;">当前</span>' : ''}</span>
+        <span class="project-row__name">${esc(p.name)}${isCurrent ? '<span class="project-card__badge" style="margin-left:6px;">' + t('projects_current') + '</span>' : ''}</span>
         <span class="project-row__path">${esc(p.path)}</span>
         <span class="project-row__meta">${esc(p.turns || p.sessions || 0)} ${t('projects_sessions')} · ${fmtTok(p.inTok || 0)}</span>
         <span class="project-row__time">${esc(humanTime(p.lastOpenedAt))}</span>
         <span class="project-row__actions">
-          <button class="btn btn--primary btn--sm" data-act="launch" title="启动 Claude">▶ Claude</button>
+          <button class="btn btn--primary btn--sm" data-act="launch" title="${t('projects_launch_title')}">▶ Claude</button>
           <button class="btn btn--sm" data-act="finder" title="Finder">📂</button>
-          <button class="btn btn--sm" data-act="more" title="更多">⋯</button>
+          <button class="btn btn--sm" data-act="more" title="${t('projects_more_title')}">⋯</button>
         </span>
       </div>
     `;
@@ -895,8 +895,8 @@ function renderProjectCard(p, isCurrent, view) {
   const meta = [
     `<span><b>${esc(p.turns || p.sessions || 0)}</b> ${t('projects_sessions')}</span>`,
     `<span><b>${fmtTok(p.inTok || 0)}</b> tokens</span>`,
-    `<span>最后打开 <b>${esc(humanTime(p.lastOpenedAt))}</b></span>`,
-    `<span>添加于 <b>${(p.addedAt || '').slice(0, 10)}</b></span>`,
+    `<span>${t('projects_last_opened')} <b>${esc(humanTime(p.lastOpenedAt))}</b></span>`,
+    `<span>${t('projects_added_at')} <b>${(p.addedAt || '').slice(0, 10)}</b></span>`,
   ].join('');
   return `
     <div class="project-card ${isCurrent ? 'project-card--current' : ''}" data-project-id="${esc(p.id)}">
@@ -905,17 +905,17 @@ function renderProjectCard(p, isCurrent, view) {
         <div class="project-card__info">
           <div class="project-card__name">
             ${esc(p.name)}
-            ${isCurrent ? '<span class="project-card__badge">当前项目</span>' : ''}
+            ${isCurrent ? '<span class="project-card__badge">' + t('projects_current_project') + '</span>' : ''}
           </div>
           <div class="project-card__path">${esc(p.path)}</div>
         </div>
       </div>
       <div class="project-card__meta">${meta}</div>
       <div class="project-card__actions">
-        <button class="btn btn--primary" data-act="launch" title="在终端中启动 Claude">▶ ${t('projects_launch')}</button>
-        <button class="btn" data-act="finder" title="在 Finder 中显示">${t('projects_finder')}</button>
-        <button class="btn" data-act="copy" title="复制路径">${t('projects_copy_path')}</button>
-        <button class="btn" data-act="more" title="更多">${t('projects_more')}</button>
+        <button class="btn btn--primary" data-act="launch" title="${t('projects_launch_in_terminal')}">▶ ${t('projects_launch')}</button>
+        <button class="btn" data-act="finder" title="${t('projects_show_in_finder')}">${t('projects_finder')}</button>
+        <button class="btn" data-act="copy" title="${t('projects_copy_path_title')}">${t('projects_copy_path')}</button>
+        <button class="btn" data-act="more" title="${t('projects_more_title')}">${t('projects_more')}</button>
       </div>
     </div>
   `;
@@ -932,14 +932,14 @@ function humanTime(iso) {
   if (isNaN(d)) return '—';
   const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return '刚刚';
-  if (m < 60) return m + ' 分钟前';
+  if (m < 1) return t('human_just_now');
+  if (m < 60) return m + t('human_minutes_ago');
   const h = Math.floor(m / 60);
-  if (h < 24) return h + ' 小时前';
+  if (h < 24) return h + t('human_hours_ago');
   const days = Math.floor(h / 24);
-  if (days === 1) return '昨天';
-  if (days < 7) return days + ' 天前';
-  if (days < 30) return Math.floor(days / 7) + ' 周前';
+  if (days === 1) return t('human_yesterday');
+  if (days < 7) return days + t('human_days_ago');
+  if (days < 30) return Math.floor(days / 7) + t('human_weeks_ago');
   return d.toISOString().slice(0, 10);
 }
 function bindProjectCardEvents() {
@@ -954,8 +954,8 @@ function bindProjectCardEvents() {
       if (act === 'launch') btn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const r = await cb.projects.launch(id);
-        if (r?.ok) flashToast('✓ 已在终端启动 Claude');
-        else flashToast('⚠ 启动失败: ' + (r?.reason || '未知'));
+        if (r?.ok) flashToast(t('toast_launched'));
+        else flashToast(t('toast_launch_failed') + (r?.reason || t('unknown_error')));
       });
       if (act === 'finder') btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -968,7 +968,7 @@ function bindProjectCardEvents() {
         const pathEl = $('.project-card__path', card) || $('.project-row__path', card);
         const path = pathEl?.textContent || '';
         await cb.clipboard.write(path);
-        flashToast('✓ 路径已复制');
+        flashToast(t('toast_path_copied'));
       });
       if (act === 'more') btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1006,24 +1006,24 @@ function bindProjectsToolbarEvents() {
   });
 }
 async function showAddProjectModal() {
-  const path = await cb.dialog.openDirectory({ title: '选择 Claude Code 工作目录' });
+  const path = await cb.dialog.openDirectory({ title: t('projects_select_dir') });
   if (!path) return;
   const name = await promptModal({
-    title: '添加项目',
-    message: '为这个项目命名（可选，留空取目录最后一段）：',
+    title: t('projects_dialog_title'),
+    message: t('projects_dialog_message'),
     defaultValue: path.split('/').pop() || '',
-    placeholder: '项目名',
+    placeholder: t('projects_dialog_placeholder'),
     confirmLabel: t('confirm'),
   });
   if (name === null) return;
   const r = await cb.projects.add({ name: name.trim(), path });
   if (r.ok) {
-    flashToast('✓ 已添加项目 ' + r.project.name);
+    flashToast(t('toast_project_added') + r.project.name);
     renderProjects();
     cb.data.rescan().catch(() => {});
   } else {
-    const reason = { 'path-not-exist': '目录不存在', 'duplicate': '项目已存在' }[r.reason] || r.reason;
-    await alertModal({ title: '添加失败', message: reason });
+    const reason = { 'path-not-exist': t('projects_reason_path'), 'duplicate': t('projects_reason_duplicate') }[r.reason] || r.reason;
+    await alertModal({ title: t('projects_add_failed'), message: reason });
   }
 }
 function showProjectMenu(anchorBtn, projectId) {
@@ -1049,12 +1049,12 @@ function showProjectMenu(anchorBtn, projectId) {
       const list = await cb.projects.list();
       const proj = list.find(p => p.id === projectId);
       if (await cb.dialog.confirm({
-        message: `确定删除 ${proj?.name || '此项目'}？`,
-        detail: '这只会从 Claude Board 中移除配置，不会删除磁盘上的目录或 Claude Code 日志。',
+        message: t('projects_delete_confirm') + ` ${proj?.name || ''}？`,
+        detail: t('projects_delete_detail'),
         confirmLabel: t('delete'),
       })) {
         await cb.projects.remove(projectId);
-        flashToast('✓ 已删除');
+        flashToast(t('toast_project_deleted'));
         renderProjects();
         cb.data.rescan().catch(() => {});
       }
@@ -1062,9 +1062,9 @@ function showProjectMenu(anchorBtn, projectId) {
       const list = await cb.projects.list();
       const proj = list.find(p => p.id === projectId);
       const newName = await promptModal({
-        title: '重命名项目',
+        title: t('projects_rename_title'),
         defaultValue: proj?.name || '',
-        placeholder: '项目名',
+        placeholder: t('projects_dialog_placeholder'),
         confirmLabel: t('save'),
       });
       if (newName && newName.trim()) {
@@ -1081,15 +1081,15 @@ function showProjectMenu(anchorBtn, projectId) {
 // 屏 13：配置组（从 model_helper 融合）
 // ============================================================
 const ENV_LABELS = {
-  ANTHROPIC_BASE_URL: 'Base URL',
-  ANTHROPIC_AUTH_TOKEN: 'Auth Token',
-  ANTHROPIC_MODEL: '默认模型',
-  ANTHROPIC_DEFAULT_HAIKU_MODEL: 'Haiku',
-  ANTHROPIC_DEFAULT_SONNET_MODEL: 'Sonnet',
-  ANTHROPIC_DEFAULT_OPUS_MODEL: 'Opus',
-  CLAUDE_CODE_SUBAGENT_MODEL: 'Subagent',
-  API_TIMEOUT_MS: '超时(ms)',
-  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '禁用流量',
+  ANTHROPIC_BASE_URL: () => t('profiles_env_base_url'),
+  ANTHROPIC_AUTH_TOKEN: () => t('profiles_env_token'),
+  ANTHROPIC_MODEL: () => t('profiles_env_default_model'),
+  ANTHROPIC_DEFAULT_HAIKU_MODEL: () => t('profiles_env_haiku'),
+  ANTHROPIC_DEFAULT_SONNET_MODEL: () => t('profiles_env_sonnet'),
+  ANTHROPIC_DEFAULT_OPUS_MODEL: () => t('profiles_env_opus'),
+  CLAUDE_CODE_SUBAGENT_MODEL: () => t('profiles_env_subagent'),
+  API_TIMEOUT_MS: () => t('profiles_env_timeout'),
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: () => t('profiles_env_disable_traffic'),
 };
 
 async function renderProfiles() {
@@ -1103,7 +1103,7 @@ async function renderProfiles() {
     } else {
       envWrap.innerHTML = '<div class="profile-env-grid">' + keys.map(k => `
         <div class="profile-env-item">
-          <span class="profile-env-key">${esc(ENV_LABELS[k] || k)}</span>
+          <span class="profile-env-key">${esc(typeof ENV_LABELS[k] === 'function' ? ENV_LABELS[k]() : (ENV_LABELS[k] || k))}</span>
           <span class="profile-env-val">${esc(k === 'ANTHROPIC_AUTH_TOKEN' && currentEnv[k] ? '***' + String(currentEnv[k]).slice(-6) : currentEnv[k])}</span>
         </div>
       `).join('') + '</div>';
@@ -1131,7 +1131,7 @@ async function renderProfiles() {
           <div class="card" style="margin-bottom:12px;" data-profile-name="${esc(p.name)}">
             <div class="card__header">
               <div class="card__title">📦 ${esc(p.name)}</div>
-              <div class="card__hint">${esc(p.description || '—')}</div>
+              <div class="card__hint">${esc(p.description || t('profiles_no_desc'))}</div>
               <div style="margin-left:auto;display:flex;gap:6px;">
                 <button class="btn btn--primary btn--sm" data-act="switch" data-name="${esc(p.name)}">${t("profiles_switch")}</button>
                 <button class="btn btn--sm" data-act="edit" data-name="${esc(p.name)}">${t("profiles_edit")}</button>
