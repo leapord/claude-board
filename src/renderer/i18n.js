@@ -351,7 +351,10 @@ function t(key) {
   return (LOCALES[currentLocale] && LOCALES[currentLocale][key]) || key;
 }
 
-module.exports = { t, setLocale, LOCALES };
+// CommonJS 导出（Node.js / preload 环境）
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { t, setLocale, LOCALES };
+}
 
 // 浏览器全局变量导出（script 标签加载时使用）
 if (typeof window !== 'undefined') {

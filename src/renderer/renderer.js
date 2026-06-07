@@ -67,9 +67,8 @@ const chartInstances = new Map();
 
 // ====== i18n（从 i18n.js 全局变量加载）======
 const I18N = window.ClaudeBoardI18n || { LOCALES: { 'zh-CN': {}, 'en-US': {} }, t: (k) => k, setLocale: () => {}, currentLocale: 'zh-CN' };
-let currentLocale = I18N.currentLocale || 'zh-CN';
 function t(key) { return I18N.t(key); }
-function setLocale(locale) { I18N.setLocale(locale); currentLocale = locale; }
+function setLocale(locale) { I18N.setLocale(locale); }
 
 // ====== Theme（暗色/亮色/跟随系统）======
 function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
@@ -147,11 +146,11 @@ function go(route) {
 }
 const settingsUI = { tab: 'general' };
 const SETTINGS_TABS = [
-  { key: 'general',    icon: '🔧', label: t('settings_general') },
-  { key: 'datasource', icon: '📁', label: t('settings_datasource') },
-  { key: 'appearance', icon: '🎨', label: t('settings_appearance') },
-  { key: 'shortcuts',  icon: '⌨️', label: t('settings_shortcuts') },
-  { key: 'about',      icon: 'ℹ️', label: t('settings_about') },
+  { key: 'general',    icon: '🔧', labelKey: 'settings_general' },
+  { key: 'datasource', icon: '📁', labelKey: 'settings_datasource' },
+  { key: 'appearance', icon: '🎨', labelKey: 'settings_appearance' },
+  { key: 'shortcuts',  icon: '⌨️', labelKey: 'settings_shortcuts' },
+  { key: 'about',      icon: 'ℹ️', labelKey: 'settings_about' },
 ];
 const SETTINGS_PANEL = {
   general: () => `
@@ -234,9 +233,9 @@ function renderSettings() {
   const s = State.settings || {};
   const nav = $('#settings-nav');
   if (nav && !nav.dataset.rendered) {
-    nav.innerHTML = SETTINGS_TABS.map(t => `
-      <div class="settings__nav-item ${t.key===settingsUI.tab?'active':''}" data-tab="${t.key}">
-        <span class="settings__nav-item__icon">${t.icon}</span>${t.label}
+    nav.innerHTML = SETTINGS_TABS.map(tab => `
+      <div class="settings__nav-item ${tab.key===settingsUI.tab?'active':''}" data-tab="${tab.key}">
+        <span class="settings__nav-item__icon">${tab.icon}</span>${t(tab.labelKey)}
       </div>
     `).join('');
     nav.querySelectorAll('.settings__nav-item').forEach(it => it.addEventListener('click', () => { settingsUI.tab = it.dataset.tab; renderSettings(); }));
@@ -253,7 +252,9 @@ function renderSettings() {
   $('#sel-language')?.addEventListener('change',   async (e) => {
     await setSetting({ language: e.target.value });
     setLocale(e.target.value);
-    // 刷新当前路由以应用新语言
+    // 强制重新渲染设置导航（清除 rendered 标记以刷新 i18n 标签）
+    const nav = $('#settings-nav');
+    if (nav) delete nav.dataset.rendered;
     renderSettings();
     flashToast('✓ 语言已切换');
   });
@@ -356,10 +357,10 @@ function renderSettings() {
   $('#btn-open-github')?.addEventListener('click', () => { cb.shell.openPath('https://github.com/leapord/claude-board'); });
   $('#btn-open-issues')?.addEventListener('click', () => { cb.shell.openPath('https://github.com/leapord/claude-board/issues'); });
   $('#btn-check-update')?.addEventListener('click', async () => {
-    flashToast('⏳ 正在检查更新…');
+    flashToast(t('update_downloading'));
     try {
       const r = await cb.updater.check();
-      if (!r.ok) { flashToast('⚠ 检查失败: ' + r.reason); return; }
+      if (!r.ok) { flashToast(t('update_error') + ': ' + r.reason); return; }
       if (r.latestVersion && r.latestVersion !== r.currentVersion) {
         const doDownload = await alertModal({
           title: t('update_available'),
@@ -368,18 +369,18 @@ function renderSettings() {
           confirmLabel: t('update_download'),
         });
         // alertModal always resolves (single button), so we show download progress inline
-        flashToast('⏳ 开始下载 v' + r.latestVersion + '…');
+        flashToast(t('update_downloading') + ' v' + r.latestVersion);
         const dr = await cb.updater.download();
         if (dr.ok) {
-          flashToast('✅ 下载完成，重启后生效');
+          flashToast(t('update_ready'));
         } else {
-          flashToast('⚠ 下载失败: ' + dr.reason);
+          flashToast(t('update_error') + ': ' + dr.reason);
         }
       } else {
-        flashToast('✓ 已是最新版本 v' + (r.currentVersion || '0.3.0'));
+        flashToast(t('update_no_update') + ' v' + (r.currentVersion || '0.3.0'));
       }
     } catch (e) {
-      flashToast('⚠ 检查更新失败: ' + (e.message || '未知错误'));
+      flashToast(t('update_error') + ': ' + (e.message || ''));
     }
   });
 }
@@ -1032,9 +1033,9 @@ function showProjectMenu(anchorBtn, projectId) {
   menu.className = 'menu-pop';
   menu.style.cssText = `position:fixed;top:${rect.bottom + 4}px;right:${window.innerWidth - rect.right}px;z-index:999;`;
   menu.innerHTML = `
-    <div class="menu-pop__item" data-act="rename">✏️ 重命名</div>
+    <div class="menu-pop__item" data-act="rename">✏️ ${t('profiles_edit').replace(/^✏️ /, '')}</div>
     <div class="menu-pop__divider"></div>
-    <div class="menu-pop__item menu-pop__item--danger" data-act="delete">🗑️ 删除项目</div>
+    <div class="menu-pop__item menu-pop__item--danger" data-act="delete">🗑️ ${t('delete')}</div>
   `;
   document.body.appendChild(menu);
   const close = () => { menu.remove(); document.removeEventListener('click', close); };
@@ -1130,7 +1131,7 @@ async function renderProfiles() {
           <div class="card" style="margin-bottom:12px;" data-profile-name="${esc(p.name)}">
             <div class="card__header">
               <div class="card__title">📦 ${esc(p.name)}</div>
-              <div class="card__hint">${esc(p.description || '无描述')}</div>
+              <div class="card__hint">${esc(p.description || '—')}</div>
               <div style="margin-left:auto;display:flex;gap:6px;">
                 <button class="btn btn--primary btn--sm" data-act="switch" data-name="${esc(p.name)}">${t("profiles_switch")}</button>
                 <button class="btn btn--sm" data-act="edit" data-name="${esc(p.name)}">${t("profiles_edit")}</button>
@@ -1221,7 +1222,7 @@ function showProfileFormModal({ title, nameValue, descValue, envValues, confirmL
         </div>
         <div class="modal__actions" style="margin-top:12px;flex-shrink:0;">
           <button class="btn" id="pf-cancel">${t("profiles_form_cancel")}</button>
-          <button class="btn btn--primary" id="pf-ok">${esc(confirmLabel || '保存')}</button>
+          <button class="btn btn--primary" id="pf-ok">${esc(confirmLabel || t('save'))}</button>
         </div>
       </div>
     `;
@@ -1585,7 +1586,7 @@ async function renderLevels() {
     if (lock) {
       if (c.lv >= 10) lock.textContent = t('levels_unlocked');
       else if (c.lv >= 6) lock.textContent = `Lv.${c.lv} ${t("levels_unlocked")} · ${t("levels_need")} ${c.target.toLocaleString()} ${t("levels_points")} → Lv.${c.lv + 1}`;
-      else lock.textContent = `🔒 需 6,200 分`;
+      else lock.textContent = `🔒 ${t('levels_need')} 6,200 ${t('levels_points')}`;
     }
   }
 }
@@ -2152,8 +2153,8 @@ $('#export-do')?.addEventListener('click', async () => {
     format: exportState.format,
   });
   if (r.ok) flashToast('✓ 已保存到 ' + r.path);
-  else if (r.reason === 'canceled') flashToast('已取消');
-  else flashToast('✗ 保存失败: ' + r.reason);
+  else if (r.reason === 'canceled') flashToast(t('cancel'));
+  else flashToast('✗ ' + r.reason);
 });
 $('#export-copy')?.addEventListener('click', async () => {
   const md = mdToPlain($('#export-preview').innerHTML);
