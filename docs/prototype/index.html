@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Board · 设计原型 v0.4</title>
+<!-- ECharts 5 (图表库，热力图/折线/饼/桑基全套) -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+/* ============================================================
+   Design Tokens — 暗色主题 + 配色（参考 Claude Dashboard 截图）
+   ============================================================ */
+:root {
+  --bg-0: #0b0d12;          /* 最外层背景 */
+  --bg-1: #11141b;          /* 侧边栏背景 */
+  --bg-2: #181c25;          /* 卡片背景 */
+  --bg-3: #1f242f;          /* 卡片悬浮 */
+  --border: #2a2f3d;        /* 分隔线 */
+  --border-light: #353b4a;
+  --text-0: #e6e8ec;        /* 主文字 */
+  --text-1: #a3a8b8;        /* 次文字 */
+  --text-2: #6c7384;        /* 辅助 */
+  --accent: #5b9dff;        /* 主色 蓝 */
+  --accent-2: #7aa2f7;      /* 浅蓝 */
+  --green: #4ade80;         /* 绿（活跃/上升）*/
+  --red: #f87171;           /* 红（下降）*/
+  --yellow: #fbbf24;        /* 黄（连续天数）*/
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --pink: #f472b6;
+  --cyan: #22d3ee;
+  /* 热力图色阶 */
+  --heat-0: #1a1d26;
+  --heat-1: #0e4429;
+  --heat-2: #006d32;
+  --heat-3: #26a641;
+  --heat-4: #39d353;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg-0);
+  color: var(--text-0);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; }
+
+/* ============================================================
+   Layout — 侧边栏 + 顶栏 + 主内容
+   ============================================================ */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 36px 1fr 28px;
+  height: 100vh;
+}
+
+/* 顶栏：mac 红绿灯 + 标题 */
+.titlebar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+.titlebar__dots { display: flex; gap: 8px; }
+.titlebar__dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ff5f57; }
+.dot-yellow { background: #febc2e; }
+.dot-green { background: #28c840; }
+.titlebar__title { margin-left: 16px; color: var(--text-1); font-size: 12px; }
+
+/* 侧边栏 */
+.sidebar {
+  background: var(--bg-1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar__brand {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.brand__name { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.brand__sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.brand__status {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.brand__status::before {
+  content: '';
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+.sidebar__group { padding: 12px 0; }
+.sidebar__label {
+  padding: 4px 16px;
+  font-size: 10px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  color: var(--text-1);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-item:hover { background: var(--bg-2); color: var(--text-0); }
+.nav-item.active {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border-left-color: var(--accent);
+}
+.nav-item__icon { font-size: 14px; width: 16px; text-align: center; }
+.nav-item__badge {
+  margin-left: auto;
+  background: var(--bg-3);
+  color: var(--text-1);
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* 热力图小卡（侧边栏底部）*/
+.sidebar__heatmap {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+.heatmap-mini {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  grid-auto-rows: 9px;
+  gap: 2px;
+  margin-top: 6px;
+}
+.heatmap-mini__cell { background: var(--heat-0); border-radius: 1px; }
+.heatmap-mini__cell.l1 { background: var(--heat-1); }
+.heatmap-mini__cell.l2 { background: var(--heat-2); }
+.heatmap-mini__cell.l3 { background: var(--heat-3); }
+.heatmap-mini__cell.l4 { background: var(--heat-4); }
+.heatmap-mini__label { font-size: 10px; color: var(--text-2); display: flex; justify-content: space-between; }
+
+/* 底栏：状态条 */
+.statusbar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+  background: var(--bg-1);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.statusbar__item { display: flex; align-items: center; gap: 4px; }
+.statusbar__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+.statusbar__right { margin-left: auto; }
+
+/* 主内容区 */
+.main {
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: none;
+}
+.main.active { display: block; }
+.page-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.page-header__title { font-size: 20px; font-weight: 600; }
+.page-header__sub { color: var(--text-2); font-size: 12px; margin-left: 10px; }
+.page-header__actions { margin-left: auto; display: flex; gap: 8px; }
+.btn {
+  padding: 6px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-0);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn:hover { background: var(--bg-3); }
+.btn--primary { background: var(--accent); border-color: var(--accent); color: white; }
+.btn--primary:hover { background: var(--accent-2); }
+
+/* ============================================================
+   通用组件：Card / Grid
+   ============================================================ */
+.grid { display: grid; gap: 12px; }
+.grid--4 { grid-template-columns: repeat(4, 1fr); }
+.grid--3 { grid-template-columns: repeat(3, 1fr); }
+.grid--2 { grid-template-columns: repeat(2, 1fr); }
+
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.card__header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.card__title { font-size: 13px; font-weight: 600; }
+.card__hint { color: var(--text-2); font-size: 11px; margin-left: auto; }
+.card__body { color: var(--text-1); }
+
+.stat-card { display: flex; flex-direction: column; gap: 4px; min-height: 88px; }
+.stat-card__label { color: var(--text-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.stat-card__value { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; }
+.stat-card__delta { font-size: 11px; display: flex; gap: 4px; align-items: center; }
+.stat-card__delta--up { color: var(--green); }
+.stat-card__delta--down { color: var(--red); }
+.stat-card__delta--warn { color: var(--yellow); }
+
+.section + .section { margin-top: 16px; }
+
+/* ============================================================
+   屏 1：概览
+   ============================================================ */
+.heatmap-90d {
+  display: grid;
+  grid-template-columns: auto repeat(13, 1fr);
+  grid-auto-rows: 12px;
+  gap: 3px;
+}
+.heatmap-90d__day-label { font-size: 9px; color: var(--text-2); padding-right: 6px; align-self: center; }
+.heatmap-90d__cell { background: var(--heat-0); border-radius: 2px; }
+.heatmap-90d__cell.l1 { background: var(--heat-1); }
+.heatmap-90d__cell.l2 { background: var(--heat-2); }
+.heatmap-90d__cell.l3 { background: var(--heat-3); }
+.heatmap-90d__cell.l4 { background: var(--heat-4); }
+
+.legend { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-2); }
+.legend__cell { width: 10px; height: 10px; border-radius: 2px; }
+.legend__sep { width: 8px; }
+
+.project-list { display: flex; flex-direction: column; gap: 4px; }
+.project-row {
+  display: grid;
+  grid-template-columns: 16px 140px 1fr 100px 24px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.project-row:hover { background: var(--bg-3); }
+.project-row__star { color: var(--yellow); }
+.project-row__name { font-weight: 500; }
+.project-row__path { color: var(--text-2); font-size: 11px; font-family: "SF Mono", Menlo, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project-row__model { color: var(--text-1); font-size: 11px; text-align: right; font-family: "SF Mono", Menlo, monospace; }
+.project-row__play { color: var(--text-2); cursor: pointer; text-align: center; }
+.project-row__play:hover { color: var(--accent); }
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-item__name { font-weight: 500; min-width: 110px; }
+.activity-item__time { color: var(--text-2); margin-left: auto; font-size: 11px; }
+
+/* ============================================================
+   屏 2：项目页
+   ============================================================ */
+.project-detail__hero {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+}
+.stat-mini {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+.stat-mini__label { font-size: 10px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-mini__value { font-size: 18px; font-weight: 600; margin-top: 2px; }
+
+.session-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.session-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--text-2);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.session-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-1);
+}
+.session-table tr:hover td { background: var(--bg-3); }
+.session-table__id { font-family: "SF Mono", Menlo, monospace; font-size: 11px; color: var(--text-2); }
+.session-table__model { font-family: "SF Mono", Menlo, monospace; color: var(--cyan); }
+
+/* ============================================================
+   屏 3：模型页
+   ============================================================ */
+.model-card { display: flex; flex-direction: column; gap: 8px; }
+.model-card__name { font-size: 14px; font-weight: 600; }
+.model-card__bar { height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+.model-card__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  border-radius: 3px;
+}
+.model-card__stats { display: flex; gap: 12px; font-size: 11px; color: var(--text-2); }
+.model-card__cost { font-size: 16px; font-weight: 600; color: var(--green); }
+
+.price-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.price-table th, .price-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.price-table th { color: var(--text-2); font-weight: 500; font-size: 11px; }
+.price-table td { font-family: "SF Mono", Menlo, monospace; }
+.price-table__name { color: var(--text-0); font-weight: 500; }
+
+/* ============================================================
+   屏 4：Token 页
+   ============================================================ */
+.token-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.token-stat {
+  background: var(--bg-3);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+}
+.token-stat__label { color: var(--text-2); font-size: 11px; }
+.token-stat__value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+.token-stat__unit { color: var(--text-2); font-size: 12px; margin-left: 4px; }
+.savings-banner {
+  background: linear-gradient(90deg, rgba(74,222,128,0.15), rgba(34,211,238,0.15));
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.savings-banner__icon { font-size: 24px; }
+.savings-banner__text { font-size: 13px; }
+.savings-banner__text strong { color: var(--green); }
+
+#sankey-chart { width: 100%; height: 360px; }
+
+/* ============================================================
+   屏 5：等级页
+   ============================================================ */
+.level-header {
+  background: linear-gradient(135deg, var(--bg-2), var(--bg-3));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: grid;
+  grid-template-columns: 100px 1fr 280px;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.level-icon-wrap {
+  width: 100px; height: 100px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle, rgba(91,157,255,0.2), transparent);
+  border-radius: 50%;
+}
+.level-icon-wrap svg { width: 72px; height: 72px; filter: drop-shadow(0 0 12px rgba(91,157,255,0.4)); }
+.level-info__lv { font-size: 32px; font-weight: 700; line-height: 1; }
+.level-info__title { font-size: 16px; color: var(--accent); margin-top: 4px; }
+.level-info__progress {
+  margin-top: 10px;
+  height: 8px;
+  background: var(--bg-1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.level-info__progress-fill {
+  height: 100%;
+  width: 67%;
+  background: linear-gradient(90deg, var(--accent), var(--cyan));
+  border-radius: 4px;
+  position: relative;
+}
+.level-info__progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.level-info__progress-text { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-2); }
+
+.level-stats { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.level-stats__row { display: flex; justify-content: space-between; }
+.level-stats__row span:last-child { color: var(--text-0); font-weight: 500; }
+
+.level-section { margin-top: 16px; }
+.level-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.level-section__title::before {
+  content: '';
+  width: 3px; height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+.level-section__lock { color: var(--text-2); font-size: 11px; font-weight: 400; margin-left: auto; }
+
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.level-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 8px;
+  text-align: center;
+  transition: all 0.2s;
+  position: relative;
+}
+.level-card--unlocked { border-color: var(--accent); }
+.level-card--current {
+  background: linear-gradient(135deg, rgba(91,157,255,0.2), rgba(34,211,238,0.1));
+  border-color: var(--accent);
+  box-shadow: 0 0 16px rgba(91,157,255,0.3);
+}
+.level-card--locked { opacity: 0.4; }
+.level-card svg { width: 40px; height: 40px; }
+.level-card__lv { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+.level-card__name { font-size: 11px; color: var(--text-1); margin-top: 2px; }
+
+.max-level-preview {
+  background: linear-gradient(135deg, #1a1f2e, #2d1f4a);
+  border: 1px solid var(--yellow);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-align: center;
+  margin-top: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.max-level-preview::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, transparent, var(--yellow), transparent 30%);
+  animation: rotate 4s linear infinite;
+  opacity: 0.3;
+}
+@keyframes rotate { 100% { transform: rotate(360deg); } }
+.max-level-preview > * { position: relative; }
+.max-level-preview__crown { width: 80px; height: 80px; margin: 0 auto 8px; filter: drop-shadow(0 0 20px var(--yellow)); }
+
+/* 概览内的热力图小条 */
+#heatmap-90d-chart { width: 100%; height: 140px; }
+#line-trend-chart { width: 100%; height: 220px; }
+#pie-model-chart { width: 100%; height: 220px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- 顶栏 -->
+  <div class="titlebar">
+    <div class="titlebar__dots">
+      <div class="titlebar__dot dot-red"></div>
+      <div class="titlebar__dot dot-yellow"></div>
+      <div class="titlebar__dot dot-green"></div>
+    </div>
+    <div class="titlebar__title">Claude Board — 设计原型 v0.4</div>
+  </div>
+
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand__name">Claude Board</div>
+      <div class="brand__sub">~/Workspace/Claude-board</div>
+      <div class="brand__status">已加载 1,247 条记录</div>
+    </div>
+
+    <div class="sidebar__group">
+      <div class="sidebar__label">工作区</div>
+      <div class="nav-item active" data-route="overview">
+        <span class="nav-item__icon">📊</span>
+        <span>概览</span>
+      </div>
+      <div class="nav-item" data-route="projects">
+        <span class="nav-item__icon">📁</span>
+        <span>项目</span>
+        <span class="nav-item__badge">12</span>
+      </div>
+      <div class="nav-item" data-route="models">
+        <span class="nav-item__icon">🤖</span>
+        <span>模型</span>
+        <span class="nav-item__badge">5</span>
+      </div>
+      <div class="nav-item" data-route="tokens">
+        <span class="nav-item__icon">💎</span>
+        <span>Token</span>
+      </div>
+      <div class="nav-item" data-route="levels">
+        <span class="nav-item__icon">🏆</span>
+        <span>等级</span>
+        <span class="nav-item__badge">7/99</span>
+      </div>
+      <div class="nav-item" data-route="terminal">
+        <span class="nav-item__icon">🖥️</span>
+        <span>终端</span>
+      </div>
+    </div>
+
+    <div class="sidebar__group">
+      <div class="sidebar__label">系统</div>
+      <div class="nav-item" data-route="settings">
+        <span class="nav-item__icon">⚙️</span>
+        <span>设置</span>
+      </div>
+      <div class="nav-item" data-route="export">
+        <span class="nav-item__icon">📤</span>
+        <span>导出周报</span>
+      </div>
+    </div>
+
+    <!-- 侧边栏底部 365 天热力图 mini -->
+    <div class="sidebar__heatmap">
+      <div class="heatmap-mini__label">
+        <span>活动热力图</span>
+        <span>365天 · 14</span>
+      </div>
+      <div class="heatmap-mini" id="sidebar-heatmap"></div>
+      <div class="heatmap-mini__label" style="margin-top:6px;">
+        <span>少</span><span>多</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 底栏 -->
+  <div class="statusbar">
+    <div class="statusbar__item"><span class="statusbar__dot"></span>已就绪</div>
+    <div class="statusbar__item">记录 1,247</div>
+    <div class="statusbar__item">项目 12</div>
+    <div class="statusbar__item">Token 24M</div>
+    <div class="statusbar__item">等级 Lv.7</div>
+    <div class="statusbar__right statusbar__item">v0.4 · 设计原型</div>
+  </div>
+
+  <!-- ============================================================
+       屏 1：概览
+       ============================================================ -->
+  <main class="main active" id="page-overview">
+    <div class="page-header">
+      <div class="page-header__title">概览</div>
+      <div class="page-header__sub">最近 7 天 ▾</div>
+      <div class="page-header__actions">
+        <button class="btn">↻ 刷新</button>
+        <button class="btn btn--primary">🚀 启动 Claude</button>
+      </div>
+    </div>
+
+    <!-- 4 个核心指标卡 -->
+    <div class="grid grid--4 section">
+      <div class="card stat-card">
+        <div class="stat-card__label">今日会话</div>
+        <div class="stat-card__value">8</div>
+        <div class="stat-card__delta stat-card__delta--up">↑ 3 vs 昨天</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">本周 Cost</div>
+        <div class="stat-card__value">$14.25</div>
+        <div class="stat-card__delta stat-card__delta--warn">本周累计</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">活跃天数 🔥 12天连续</div>
+        <div class="stat-card__value">5 / 7</div>
+        <div class="stat-card__delta stat-card__delta--up">本周占比 71%</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">本周 Token</div>
+        <div class="stat-card__value">2,680,000</div>
+        <div class="stat-card__delta stat-card__delta--up">缓存 17%</div>
+      </div>
+    </div>
+
+    <!-- 趋势 + 饼图 -->
+    <div class="grid grid--2 section" style="grid-template-columns: 1.4fr 1fr;">
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">活动趋势</div>
+          <div class="card__hint">最近 14 天</div>
+        </div>
+        <div id="line-trend-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">模型分布</div>
+          <div class="card__hint">本周</div>
+        </div>
+        <div id="pie-model-chart"></div>
+      </div>
+    </div>
+
+    <!-- 最近项目 + 最近活动 -->
+    <div class="grid grid--2 section" style="grid-template-columns: 1.4fr 1fr;">
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">最近项目</div>
+          <div class="card__hint">点击启动</div>
+        </div>
+        <div class="project-list">
+          <div class="project-row">
+            <span class="project-row__star">⭐</span>
+            <span class="project-row__name">Claude Board</span>
+            <span class="project-row__path">/opt/data/workspace/Claude-board</span>
+            <span class="project-row__model">claude-sonnet-4</span>
+            <span class="project-row__play">▶</span>
+          </div>
+          <div class="project-row">
+            <span class="project-row__star">⭐</span>
+            <span class="project-row__name">xCloud IoT</span>
+            <span class="project-row__path">/opt/data/workspace/xCloud</span>
+            <span class="project-row__model">claude-opus-4</span>
+            <span class="project-row__play">▶</span>
+          </div>
+          <div class="project-row">
+            <span class="project-row__star">⭐</span>
+            <span class="project-row__name">hexo-blog</span>
+            <span class="project-row__path">/opt/data/workspace/blog</span>
+            <span class="project-row__model">claude-haiku-4</span>
+            <span class="project-row__play">▶</span>
+          </div>
+          <div class="project-row">
+            <span class="project-row__star">⭐</span>
+            <span class="project-row__name">hermes-web-ui</span>
+            <span class="project-row__path">/Users/.../hermes-web-ui</span>
+            <span class="project-row__model">glm-4.6</span>
+            <span class="project-row__play">▶</span>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__header">
+          <div class="card__title">最近活动</div>
+          <div class="card__hint">最近 10 条</div>
+        </div>
+        <div>
+          <div class="activity-item"><span class="activity-item__name">Claude Board</span><span style="color:var(--text-2);font-size:11px;">/opt/data/workspace/Cl...</span><span class="activity-item__time">30m ago</span></div>
+          <div class="activity-item"><span class="activity-item__name">xCloud IoT</span><span style="color:var(--text-2);font-size:11px;">/opt/data/workspace/x...</span><span class="activity-item__time">2h ago</span></div>
+          <div class="activity-item"><span class="activity-item__name">hexo-blog</span><span style="color:var(--text-2);font-size:11px;">/opt/data/workspace/b...</span><span class="activity-item__time">5h ago</span></div>
+          <div class="activity-item"><span class="activity-item__name">hermes-web-ui</span><span style="color:var(--text-2);font-size:11px;">/Users/.../hermes-web-...</span><span class="activity-item__time">昨天 22:15</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       屏 2：项目页
+       ============================================================ -->
+  <main class="main" id="page-projects">
+    <div class="page-header">
+      <div class="page-header__title">📁 项目 (12)</div>
+      <div class="page-header__actions">
+        <button class="btn">排序: 会话数 ▾</button>
+        <button class="btn">🔍 搜索</button>
+      </div>
+    </div>
+
+    <div class="card section">
+      <div class="project-detail__hero">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+            <span style="color:var(--yellow);font-size:14px;">⭐</span>
+            <span style="font-size:16px;font-weight:600;">Claude Board</span>
+            <span style="color:var(--text-2);font-size:11px;font-family:monospace;">/Users/qiyuyang/developCode/self/board</span>
+          </div>
+          <div class="grid grid--4">
+            <div class="stat-mini"><div class="stat-mini__label">会话</div><div class="stat-mini__value">247</div></div>
+            <div class="stat-mini"><div class="stat-mini__label">项目</div><div class="stat-mini__value">1</div></div>
+            <div class="stat-mini"><div class="stat-mini__label">Token</div><div class="stat-mini__value">8.2M</div></div>
+            <div class="stat-mini"><div class="stat-mini__label">Cost</div><div class="stat-mini__value">$85.3</div></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-3);padding:14px;border-radius:var(--radius-sm);">
+          <div style="font-size:11px;color:var(--text-2);">项目元信息</div>
+          <div style="margin-top:8px;font-size:12px;line-height:1.8;">
+            <div>首次: 2026-05-01</div>
+            <div>最近: 30m ago</div>
+            <div>模型: 3 个</div>
+            <div>时长: 42h</div>
+          </div>
+          <button class="btn btn--primary" style="margin-top:10px;width:100%;">⭐ 收藏项目</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card section">
+      <div class="card__header">
+        <div class="card__title">会话列表</div>
+        <div class="card__hint">共 247 条 · 倒序</div>
+      </div>
+      <table class="session-table">
+        <thead>
+          <tr>
+            <th>Session ID</th>
+            <th>时间</th>
+            <th>轮次</th>
+            <th>模型</th>
+            <th>Token</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="session-table__id">9dc4be6a...</td><td>2026-05-10 12:30</td><td>14</td><td class="session-table__model">glm-4.6</td><td>12,450</td><td><a style="color:var(--accent);">查看</a></td></tr>
+          <tr><td class="session-table__id">4b55da02...</td><td>2026-05-09 18:22</td><td>31</td><td class="session-table__model">MiniMax-M3</td><td>48,200</td><td><a style="color:var(--accent);">查看</a></td></tr>
+          <tr><td class="session-table__id">f95ab358...</td><td>2026-05-09 09:15</td><td>8</td><td class="session-table__model">glm-4.6</td><td>6,100</td><td><a style="color:var(--accent);">查看</a></td></tr>
+          <tr><td class="session-table__id">a23bc891...</td><td>2026-05-08 14:42</td><td>22</td><td class="session-table__model">glm-4.6</td><td>28,800</td><td><a style="color:var(--accent);">查看</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       屏 3：模型页
+       ============================================================ -->
+  <main class="main" id="page-models">
+    <div class="page-header">
+      <div class="page-header__title">🤖 模型分布</div>
+      <div class="page-header__actions">
+        <button class="btn">时段: 全部 ▾</button>
+        <button class="btn">币种: USD ▾</button>
+      </div>
+    </div>
+
+    <div class="grid grid--3 section">
+      <div class="card model-card">
+        <div class="model-card__name">glm-4.6</div>
+        <div class="model-card__bar"><div class="model-card__bar-fill" style="width:88%"></div></div>
+        <div class="model-card__stats"><span>541 次</span><span>24.5M in / 8.2M out</span></div>
+        <div class="model-card__cost">$324.50</div>
+        <button class="btn" style="margin-top:4px;">查看详情 →</button>
+      </div>
+      <div class="card model-card">
+        <div class="model-card__name">MiniMax-M3</div>
+        <div class="model-card__bar"><div class="model-card__bar-fill" style="width:42%"></div></div>
+        <div class="model-card__stats"><span>90 次</span><span>3.2M in / 1.1M out</span></div>
+        <div class="model-card__cost">$54.20</div>
+        <button class="btn" style="margin-top:4px;">查看详情 →</button>
+      </div>
+      <div class="card model-card" style="opacity:0.5;">
+        <div class="model-card__name">claude-opus-4</div>
+        <div class="model-card__bar"><div class="model-card__bar-fill" style="width:0%"></div></div>
+        <div class="model-card__stats"><span>未使用</span><span>—</span></div>
+        <div class="model-card__cost">$0.00</div>
+        <button class="btn" style="margin-top:4px;">查看详情 →</button>
+      </div>
+    </div>
+
+    <div class="card section">
+      <div class="card__header">
+        <div class="card__title">模型价格表（可编辑）</div>
+        <button class="btn btn--primary" style="margin-left:auto;">+ 添加自定义模型</button>
+      </div>
+      <table class="price-table">
+        <thead>
+          <tr><th>模型</th><th>Input / 1M</th><th>Output / 1M</th><th>Cache 写 / 1M</th><th>Cache 读 / 1M</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="price-table__name">claude-opus-4</td><td>$15.00</td><td>$75.00</td><td>$18.75</td><td>$1.50</td><td><a style="color:var(--accent);">编辑</a></td></tr>
+          <tr><td class="price-table__name">claude-sonnet-4</td><td>$3.00</td><td>$15.00</td><td>$3.75</td><td>$0.30</td><td><a style="color:var(--accent);">编辑</a></td></tr>
+          <tr><td class="price-table__name">claude-haiku-4</td><td>$0.80</td><td>$4.00</td><td>$1.00</td><td>$0.08</td><td><a style="color:var(--accent);">编辑</a></td></tr>
+          <tr><td class="price-table__name">glm-4.6</td><td>$0.60</td><td>$2.20</td><td>$0.60</td><td>$0.06</td><td><a style="color:var(--accent);">编辑</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       屏 4：Token 页
+       ============================================================ -->
+  <main class="main" id="page-tokens">
+    <div class="page-header">
+      <div class="page-header__title">💎 Token 深度分析</div>
+    </div>
+
+    <div class="token-overview section">
+      <div class="token-stat"><div class="token-stat__label">Input</div><div class="token-stat__value">28.2<span class="token-stat__unit">M</span></div></div>
+      <div class="token-stat"><div class="token-stat__label">Output</div><div class="token-stat__value">9.4<span class="token-stat__unit">M</span></div></div>
+      <div class="token-stat"><div class="token-stat__label">Cache Write</div><div class="token-stat__value">5.1<span class="token-stat__unit">M</span></div></div>
+      <div class="token-stat"><div class="token-stat__label">Cache Read</div><div class="token-stat__value">87.4<span class="token-stat__unit">M</span></div></div>
+    </div>
+
+    <div class="savings-banner section">
+      <div class="savings-banner__icon">💰</div>
+      <div class="savings-banner__text">
+        缓存命中率 <strong>89.4%</strong> · 节省成本 <strong>$2,624</strong>
+      </div>
+    </div>
+
+    <div class="card section">
+      <div class="card__header">
+        <div class="card__title">Token 流向（桑基图）</div>
+        <div class="card__hint">Input → Model → Output</div>
+      </div>
+      <div id="sankey-chart"></div>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       屏 5：等级页
+       ============================================================ -->
+  <main class="main" id="page-levels">
+    <div class="page-header">
+      <div class="page-header__title">🏆 我的等级</div>
+    </div>
+
+    <div class="level-header">
+      <div class="level-icon-wrap">
+        <!-- Lv.7 学者·翻书 SVG 图标 -->
+        <svg viewBox="0 0 64 64" fill="none">
+          <defs>
+            <linearGradient id="book-g" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#5b9dff"/>
+              <stop offset="1" stop-color="#22d3ee"/>
+            </linearGradient>
+          </defs>
+          <rect x="8" y="14" width="48" height="38" rx="3" fill="url(#book-g)" opacity="0.2"/>
+          <path d="M8 14 L32 22 L56 14 L56 50 L32 56 L8 50 Z" fill="url(#book-g)" opacity="0.4"/>
+          <path d="M32 22 L32 56" stroke="#5b9dff" stroke-width="2"/>
+          <path d="M14 22 L26 26 M14 28 L26 32 M14 34 L26 38" stroke="#5b9dff" stroke-width="1.5" opacity="0.7"/>
+          <path d="M38 26 L50 22 M38 32 L50 28 M38 38 L50 34" stroke="#22d3ee" stroke-width="1.5" opacity="0.7"/>
+          <circle cx="32" cy="22" r="3" fill="#fff"/>
+        </svg>
+      </div>
+      <div class="level-info">
+        <div class="level-info__lv">Lv.7</div>
+        <div class="level-info__title">📖 学者 · 翻书</div>
+        <div class="level-info__progress">
+          <div class="level-info__progress-fill"></div>
+        </div>
+        <div class="level-info__progress-text">
+          <span>8,340 / 12,400 分</span>
+          <span>距 Lv.8 还需 4,060 分</span>
+        </div>
+      </div>
+      <div class="level-stats">
+        <div class="level-stats__row"><span>已解锁</span><span>7 / 99</span></div>
+        <div class="level-stats__row"><span>下一称号</span><span>📖 学者·学士</span></div>
+        <div class="level-stats__row"><span>总积分</span><span>8,340</span></div>
+        <div class="level-stats__row"><span>本月 +1,240</span><span style="color:var(--green);">↑ 17%</span></div>
+      </div>
+    </div>
+
+    <!-- 萌芽段 -->
+    <div class="level-section">
+      <div class="level-section__title">
+        🌱 萌芽段 (L1-10) <span class="level-section__lock">✓ 已全部解锁</span>
+      </div>
+      <div class="level-grid">
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M24 8 C24 8 14 12 14 22 C14 30 24 40 24 40 C24 40 34 30 34 22 C34 12 24 8 24 8 Z" fill="#4ade80" opacity="0.7"/>
+            <path d="M24 8 L24 40" stroke="#4ade80" stroke-width="1.5"/>
+          </svg>
+          <div class="level-card__lv">Lv.1</div>
+          <div class="level-card__name">🌱 嫩芽</div>
+        </div>
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M14 36 C8 28 12 18 18 14 M34 36 C40 28 36 18 30 14 M24 38 L24 12" stroke="#4ade80" stroke-width="2" fill="none"/>
+            <circle cx="18" cy="18" r="3" fill="#4ade80"/>
+            <circle cx="30" cy="18" r="3" fill="#4ade80"/>
+          </svg>
+          <div class="level-card__lv">Lv.2</div>
+          <div class="level-card__name">🌿 幼苗</div>
+        </div>
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M24 10 L24 38" stroke="#4ade80" stroke-width="2"/>
+            <circle cx="14" cy="20" r="6" fill="#4ade80" opacity="0.7"/>
+            <circle cx="34" cy="20" r="6" fill="#4ade80" opacity="0.7"/>
+            <circle cx="24" cy="14" r="6" fill="#22c55e" opacity="0.7"/>
+          </svg>
+          <div class="level-card__lv">Lv.3</div>
+          <div class="level-card__name">🍀 三叶</div>
+        </div>
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="20" y="12" width="8" height="30" fill="#4ade80"/>
+            <circle cx="24" cy="10" r="10" fill="#4ade80" opacity="0.8"/>
+            <circle cx="18" cy="14" r="6" fill="#4ade80" opacity="0.5"/>
+            <circle cx="30" cy="14" r="6" fill="#4ade80" opacity="0.5"/>
+          </svg>
+          <div class="level-card__lv">Lv.4</div>
+          <div class="level-card__name">🌳 小树</div>
+        </div>
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M14 40 L24 8 L34 40 Z" fill="#4ade80"/>
+            <path d="M18 40 L24 24 L30 40 Z" fill="#22c55e" opacity="0.7"/>
+            <rect x="22" y="36" width="4" height="6" fill="#7c2d12"/>
+          </svg>
+          <div class="level-card__lv">Lv.5</div>
+          <div class="level-card__name">🌲 大树</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 学者段 -->
+    <div class="level-section">
+      <div class="level-section__title">
+        📜 学者段 (L11-20)
+        <span class="level-section__lock">Lv.7 已解锁 · 需 12,400 分达成 Lv.8</span>
+      </div>
+      <div class="level-grid">
+        <div class="level-card level-card--unlocked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <rect x="10" y="8" width="28" height="32" rx="2" fill="#5b9dff" opacity="0.3"/>
+            <line x1="10" y1="14" x2="38" y2="14" stroke="#5b9dff" stroke-width="1.5"/>
+            <line x1="14" y1="20" x2="34" y2="20" stroke="#5b9dff" stroke-width="1" opacity="0.7"/>
+            <line x1="14" y1="25" x2="34" y2="25" stroke="#5b9dff" stroke-width="1" opacity="0.7"/>
+            <line x1="14" y1="30" x2="34" y2="30" stroke="#5b9dff" stroke-width="1" opacity="0.7"/>
+            <line x1="14" y1="35" x2="28" y2="35" stroke="#5b9dff" stroke-width="1" opacity="0.7"/>
+          </svg>
+          <div class="level-card__lv">Lv.6</div>
+          <div class="level-card__name">📜 竹简</div>
+        </div>
+        <div class="level-card level-card--current">
+          <svg viewBox="0 0 48 48" fill="none">
+            <defs>
+              <linearGradient id="book-current" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#5b9dff"/>
+                <stop offset="1" stop-color="#22d3ee"/>
+              </linearGradient>
+            </defs>
+            <path d="M24 8 L8 14 L8 40 L24 36 Z" fill="url(#book-current)" opacity="0.6"/>
+            <path d="M24 8 L40 14 L40 40 L24 36 Z" fill="url(#book-current)" opacity="0.8"/>
+            <line x1="12" y1="20" x2="22" y2="18" stroke="#5b9dff" stroke-width="1" opacity="0.6"/>
+            <line x1="12" y1="26" x2="22" y2="24" stroke="#5b9dff" stroke-width="1" opacity="0.6"/>
+            <line x1="26" y1="18" x2="36" y2="20" stroke="#22d3ee" stroke-width="1" opacity="0.7"/>
+            <line x1="26" y1="24" x2="36" y2="26" stroke="#22d3ee" stroke-width="1" opacity="0.7"/>
+          </svg>
+          <div class="level-card__lv" style="color:var(--accent);font-weight:600;">Lv.7 ← YOU</div>
+          <div class="level-card__name">📖 翻书</div>
+        </div>
+        <div class="level-card level-card--locked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="14" fill="none" stroke="#5b9dff" stroke-width="2" opacity="0.3"/>
+            <path d="M16 24 L22 30 L32 18" stroke="#5b9dff" stroke-width="2.5" fill="none" opacity="0.4"/>
+          </svg>
+          <div class="level-card__lv">Lv.8</div>
+          <div class="level-card__name">🎓 学士</div>
+        </div>
+        <div class="level-card level-card--locked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <path d="M24 8 L24 18 M14 14 L34 14" stroke="#5b9dff" stroke-width="2" opacity="0.3"/>
+            <path d="M8 18 L40 18 L36 32 L12 32 Z" fill="#5b9dff" opacity="0.2"/>
+            <circle cx="24" cy="36" r="2" fill="#5b9dff" opacity="0.4"/>
+          </svg>
+          <div class="level-card__lv">Lv.9</div>
+          <div class="level-card__name">🧑‍🎓 硕士</div>
+        </div>
+        <div class="level-card level-card--locked">
+          <svg viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="18" r="8" fill="none" stroke="#5b9dff" stroke-width="2" opacity="0.3"/>
+            <path d="M12 38 C12 30 18 26 24 26 C30 26 36 30 36 38" fill="#5b9dff" opacity="0.2"/>
+            <rect x="20" y="14" width="8" height="4" fill="#5b9dff" opacity="0.3"/>
+          </svg>
+          <div class="level-card__lv">Lv.10</div>
+          <div class="level-card__name">👨‍🏫 博士</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 后续段位（折叠预览） -->
+    <div class="level-section">
+      <div class="level-section__title">
+        ⚒️ 工匠段 (L21-35) <span class="level-section__lock">🔒 需 50,000 分</span>
+      </div>
+      <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">
+        🔒 解锁后将展示 5 个工匠主题图标（🔧 扳手 → ⚒️ 铁锤 → ⚙️ 齿轮 → 🛠️ 工具箱 → 🏗️ 吊车）
+      </div>
+    </div>
+
+    <div class="level-section">
+      <div class="level-section__title">
+        🧠 智慧段 (L36-50) <span class="level-section__lock">🔒</span>
+      </div>
+      <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">
+        🔒 解锁后将展示 5 个智慧主题图标（🧠 大脑 → 💡 灯泡 → 🔮 水晶 → 🌌 星云 → 🪐 行星）
+      </div>
+    </div>
+
+    <div class="level-section">
+      <div class="level-section__title">
+        🎨 大师段 (L51-70) <span class="level-section__lock">🔒</span>
+      </div>
+      <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">
+        🔒 解锁后将展示 5 个大师主题图标（🎨 画笔 → 🖌️ 毛笔 → 🎭 面具 → 🏆 奖杯 → 💎 钻石）
+      </div>
+    </div>
+
+    <div class="level-section">
+      <div class="level-section__title">
+        🌌 旅者段 (L71-85) <span class="level-section__lock">🔒</span>
+      </div>
+      <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">
+        🔒 解锁后将展示 5 个旅者主题图标（🚀 火箭 → 🛸 飞船 → 🌠 流星 → ⭐ 恒星 → 🌟 超新星）
+      </div>
+    </div>
+
+    <div class="level-section">
+      <div class="level-section__title">
+        ⚡ 传奇段 (L86-98) <span class="level-section__lock">🔒</span>
+      </div>
+      <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">
+        🔒 解锁后将展示 5 个传奇主题图标（⚡ 闪电 → 🔥 烈焰 → 🐉 龙鳞 → 🦅 羽翼 → 👹 神明）
+      </div>
+    </div>
+
+    <!-- 满级预览 -->
+    <div class="max-level-preview">
+      <svg class="max-level-preview__crown" viewBox="0 0 80 80" fill="none">
+        <defs>
+          <linearGradient id="crown-g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fbbf24"/>
+            <stop offset="1" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+        <path d="M10 50 L20 20 L30 40 L40 15 L50 40 L60 20 L70 50 Z" fill="url(#crown-g)"/>
+        <rect x="10" y="50" width="60" height="10" fill="url(#crown-g)"/>
+        <circle cx="20" cy="20" r="3" fill="#fef3c7"/>
+        <circle cx="40" cy="15" r="3" fill="#fef3c7"/>
+        <circle cx="60" cy="20" r="3" fill="#fef3c7"/>
+        <rect x="10" y="60" width="60" height="3" fill="#fde68a"/>
+      </svg>
+      <div style="font-size:24px;font-weight:700;color:var(--yellow);">👑 Lv.99 · AI 大牛</div>
+      <div style="color:var(--text-1);font-size:12px;margin-top:4px;">满级特殊奖励 · 旋转金冠 + 动态粒子 + 全息光环</div>
+      <div style="color:var(--text-2);font-size:11px;margin-top:8px;">解锁条件：全部维度满格（项目 50+ · 会话 5000+ · Token 100M+ · 90 天连续活跃）</div>
+    </div>
+  </main>
+
+  <!-- ============================================================
+       屏 6：90 天热力图（独立屏）
+       ============================================================ -->
+  <main class="main" id="page-heatmap">
+    <div class="page-header">
+      <div class="page-header__title">🔥 90 天活跃热力图</div>
+      <div class="page-header__actions">
+        <button class="btn">📷 导出 PNG</button>
+      </div>
+    </div>
+
+    <div class="card section">
+      <div id="heatmap-90d-chart"></div>
+    </div>
+
+    <div class="grid grid--4 section">
+      <div class="card stat-card">
+        <div class="stat-card__label">总活跃天数</div>
+        <div class="stat-card__value">47</div>
+        <div class="stat-card__delta">/ 90 天</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">最长连续</div>
+        <div class="stat-card__value">12 天 🔥</div>
+        <div class="stat-card__delta stat-card__delta--warn">当前连续中</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">日均启动</div>
+        <div class="stat-card__value">3.2 次</div>
+        <div class="stat-card__delta stat-card__delta--up">↑ 17% vs 上 90 天</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-card__label">本周活跃</div>
+        <div class="stat-card__value">5 / 7</div>
+        <div class="stat-card__delta stat-card__delta--up">占比 71%</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+/* ============================================================
+   Hash 路由
+   ============================================================ */
+const routes = {
+  overview: 'page-overview',
+  projects: 'page-projects',
+  models: 'page-models',
+  tokens: 'page-tokens',
+  levels: 'page-levels',
+  terminal: 'page-overview',
+  settings: 'page-overview',
+  export: 'page-overview',
+  heatmap: 'page-heatmap',
+};
+function go(route) {
+  const id = routes[route] || 'page-overview';
+  document.querySelectorAll('.main').forEach(m => m.classList.remove('active'));
+  const el = document.getElementById(id);
+  if (el) {
+    el.classList.add('active');
+    el.scrollTop = 0;
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+  }
+  document.querySelectorAll('.nav-item').forEach(n => {
+    n.classList.toggle('active', n.dataset.route === route);
+  });
+  location.hash = route;
+}
+document.querySelectorAll('.nav-item').forEach(n => {
+  n.addEventListener('click', () => go(n.dataset.route));
+});
+window.addEventListener('hashchange', () => go(location.hash.slice(1) || 'overview'));
+go(location.hash.slice(1) || 'overview');
+
+/* ============================================================
+   侧边栏 365 天热力图（mini）
+   ============================================================ */
+(function buildSidebarHeatmap() {
+  const wrap = document.getElementById('sidebar-heatmap');
+  if (!wrap) return;
+  const cells = [];
+  // 15 列 × 7 行 = 105 天（够代表 90 天 + 偏移）
+  for (let i = 0; i < 15 * 7; i++) {
+    const r = Math.random();
+    let lvl = 0;
+    if (r > 0.7) lvl = 1;
+    if (r > 0.82) lvl = 2;
+    if (r > 0.92) lvl = 3;
+    if (r > 0.98) lvl = 4;
+    cells.push(`<div class="heatmap-mini__cell${lvl ? ' l' + lvl : ''}"></div>`);
+  }
+  wrap.innerHTML = cells.join('');
+})();
+
+/* ============================================================
+   概览页 - 活动趋势折线
+   ============================================================ */
+(function initLineChart() {
+  const el = document.getElementById('line-trend-chart');
+  if (!el) return;
+  const chart = echarts.init(el, null, { renderer: 'canvas' });
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(); d.setDate(d.getDate() - 13 + i);
+    return `${d.getMonth()+1}/${d.getDate()}`;
+  });
+  const data = [3, 5, 8, 6, 4, 2, 1, 7, 9, 6, 11, 4, 13, 8];
+  chart.setOption({
+    grid: { left: 30, right: 20, top: 20, bottom: 30 },
+    tooltip: { trigger: 'axis', backgroundColor: '#1f242f', borderColor: '#2a2f3d', textStyle: { color: '#e6e8ec' } },
+    xAxis: {
+      type: 'category', data: days, boundaryGap: false,
+      axisLine: { lineStyle: { color: '#2a2f3d' } },
+      axisLabel: { color: '#6c7384', fontSize: 10 },
+    },
+    yAxis: {
+      type: 'value',
+      splitLine: { lineStyle: { color: '#2a2f3d' } },
+      axisLabel: { color: '#6c7384', fontSize: 10 },
+    },
+    series: [{
+      name: '启动次数', type: 'line', smooth: true, data,
+      symbolSize: 6, itemStyle: { color: '#5b9dff' },
+      lineStyle: { width: 2, color: '#5b9dff' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(91,157,255,0.3)' },
+          { offset: 1, color: 'rgba(91,157,255,0)' },
+        ]),
+      },
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+
+/* ============================================================
+   概览页 - 模型分布饼图
+   ============================================================ */
+(function initPieChart() {
+  const el = document.getElementById('pie-model-chart');
+  if (!el) return;
+  const chart = echarts.init(el, null, { renderer: 'canvas' });
+  chart.setOption({
+    tooltip: { trigger: 'item', backgroundColor: '#1f242f', borderColor: '#2a2f3d', textStyle: { color: '#e6e8ec' } },
+    legend: { orient: 'vertical', right: 10, top: 'center', textStyle: { color: '#a3a8b8', fontSize: 11 } },
+    series: [{
+      type: 'pie', radius: ['45%', '70%'], center: ['35%', '50%'],
+      label: { show: false },
+      data: [
+        { value: 12.45, name: 'glm-4.6', itemStyle: { color: '#5b9dff' } },
+        { value: 1.80, name: 'MiniMax-M3', itemStyle: { color: '#4ade80' } },
+      ],
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+
+/* ============================================================
+   Token 页 - 桑基图
+   ============================================================ */
+(function initSankey() {
+  const el = document.getElementById('sankey-chart');
+  if (!el) return;
+  const chart = echarts.init(el, null, { renderer: 'canvas' });
+  chart.setOption({
+    tooltip: { trigger: 'item', triggerOn: 'mousemove', backgroundColor: '#1f242f', borderColor: '#2a2f3d', textStyle: { color: '#e6e8ec' } },
+    series: [{
+      type: 'sankey',
+      data: [
+        { name: 'Input' }, { name: 'Cache Read' },
+        { name: 'sonnet-4' }, { name: 'opus-4' }, { name: 'haiku-4' },
+        { name: 'Output' },
+      ],
+      links: [
+        { source: 'Input',         target: 'sonnet-4', value: 12 },
+        { source: 'Input',         target: 'opus-4',   value: 8 },
+        { source: 'Input',         target: 'haiku-4',  value: 8 },
+        { source: 'sonnet-4',      target: 'Output',   value: 4 },
+        { source: 'opus-4',        target: 'Output',   value: 3 },
+        { source: 'haiku-4',       target: 'Output',   value: 2 },
+        { source: 'Cache Read',    target: 'sonnet-4', value: 50 },
+        { source: 'Cache Read',    target: 'opus-4',   value: 22 },
+        { source: 'Cache Read',    target: 'haiku-4',  value: 15 },
+      ],
+      label: { color: '#a3a8b8', fontSize: 11 },
+      lineStyle: { color: 'gradient', curveness: 0.5, opacity: 0.4 },
+      itemStyle: { borderWidth: 0 },
+      color: ['#5b9dff', '#22d3ee', '#4ade80', '#a78bfa', '#fb923c', '#f472b6'],
+    }],
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+
+/* ============================================================
+   热力图页 - 90 天真实热力图
+   ============================================================ */
+(function initHeatmap90d() {
+  const el = document.getElementById('heatmap-90d-chart');
+  if (!el) return;
+  const chart = echarts.init(el, null, { renderer: 'canvas' });
+  const days = 90;
+  const data = [];
+  const startDate = new Date(); startDate.setDate(startDate.getDate() - days + 1);
+  for (let i = 0; i < days; i++) {
+    const d = new Date(startDate); d.setDate(startDate.getDate() + i);
+    const r = Math.random();
+    let v = 0;
+    if (r > 0.55) v = Math.floor(Math.random() * 5) + 1;
+    if (r > 0.85) v = Math.floor(Math.random() * 10) + 5;
+    if (r > 0.97) v = Math.floor(Math.random() * 15) + 15;
+    data.push([d.toISOString().slice(0, 10), v]);
+  }
+  chart.setOption({
+    tooltip: { backgroundColor: '#1f242f', borderColor: '#2a2f3d', textStyle: { color: '#e6e8ec' } },
+    visualMap: {
+      min: 0, max: 30, calculable: false, orient: 'horizontal', left: 'center', bottom: 0,
+      inRange: { color: ['#1a1d26', '#0e4429', '#006d32', '#26a641', '#39d353'] },
+      textStyle: { color: '#6c7384', fontSize: 10 },
+      itemWidth: 10, itemHeight: 10,
+    },
+    calendar: {
+      top: 30, left: 40, right: 20, bottom: 40,
+      cellSize: ['auto', 14],
+      range: [startDate.toISOString().slice(0, 10), new Date().toISOString().slice(0, 10)],
+      itemStyle: { borderColor: '#0b0d12', color: '#1a1d26' },
+      yearLabel: { color: '#a3a8b8' },
+      monthLabel: { color: '#a3a8b8' },
+      dayLabel: { color: '#6c7384' },
+      splitLine: { lineStyle: { color: '#2a2f3d' } },
+    },
+    series: { type: 'heatmap', coordinateSystem: 'calendar', data },
+  });
+  window.addEventListener('resize', () => chart.resize());
+})();
+</script>
+
+</body>
+</html>
