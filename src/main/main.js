@@ -13,6 +13,11 @@ let mainWindow = null;
 let tray = null; // 系统托盘
 const scannerCache = { ts: 0, data: null }; // 30s 缓存避免每次都扫盘
 
+// ====== 单实例锁（禁止多开）======
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+}
+
 // ====== Settings 持久化 ======
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
 const MODEL_PRICES_FILE = path.join(app.getPath('userData'), 'model-prices.json');
@@ -75,10 +80,10 @@ async function detectAvailableTerminals() {
       const paths = def.appPaths || [def.appPath];
       available = paths.some(p => fs.existsSync(p));
     } else if (platform === 'win32') {
-      // Windows: 尝试 spawn --version
+      // Windows: 尝试 spawn --version（shell: true 让 spawn 使用 PATH 查找 exe）
       try {
         await new Promise((resolve, reject) => {
-          const child = spawn(def.testCmd, def.testArgs, { timeout: 3000, stdio: 'ignore' });
+          const child = spawn(def.testCmd, def.testArgs, { timeout: 5000, stdio: 'ignore', shell: true });
           child.on('error', reject);
           child.on('close', (code) => code === 0 ? resolve() : reject(new Error('non-zero')));
         });
@@ -120,7 +125,7 @@ async function resolveTerminal() {
 }
 
 // 用指定终端启动命令
-function launchInTerminal(termInfo, cmd) {
+function launchInTerminal(termInfo, cmd, projPath) {
   const platform = process.platform;
   const termId = termInfo?.id || 'unknown';
 
@@ -145,17 +150,23 @@ function launchInTerminal(termInfo, cmd) {
       child.unref();
     }
   } else if (platform === 'win32') {
+    // Windows: 用 npm global bin 路径确保 claude 可找到
+    const npmGlobalBin = path.join(app.getPath('appData'), 'npm');
+    const winEnv = { ...process.env, PATH: `${npmGlobalBin};${process.env.PATH || ''}` };
+
     if (termId === 'wt') {
-      // Windows Terminal
-      const child = spawn('wt.exe', ['new-tab', '-p', 'Command Prompt', 'cmd', '/k', cmd], { detached: true, stdio: 'ignore', shell: true });
+      // Windows Terminal: 打开新 tab 并执行命令
+      const child = spawn('wt.exe', ['new-tab', 'cmd', '/k', `${cmd}`], { detached: true, stdio: 'ignore', shell: true, env: winEnv });
       child.unref();
     } else if (termId === 'powershell') {
-      // PowerShell
-      const child = spawn('powershell.exe', ['-Command', `Start-Process powershell -ArgumentList '-NoExit','-Command','${cmd.replace(/'/g, "''")}'`], { detached: true, stdio: 'ignore', shell: true });
+      // PowerShell: -NoExit 保持窗口
+      const psCmd = `Set-Location -Path '${projPath || ''}'; claude`;
+      const child = spawn('powershell.exe', ['-NoExit', '-Command', psCmd], { detached: true, stdio: 'ignore', shell: true, env: winEnv });
       child.unref();
     } else {
-      // CMD（默认）
-      const child = spawn('cmd', ['/c', 'start', 'Claude', 'cmd', '/k', cmd], { detached: true, stdio: 'ignore', shell: true });
+      // CMD（默认）：start "" 打开新窗口，cmd /k 保持窗口打开执行命令
+      // 整个命令用引号包裹，防止 && 被外层 cmd 解析
+      const child = spawn('cmd', ['/c', 'start', '""', 'cmd', '/k', `${cmd}`], { detached: true, stdio: 'ignore', shell: true, env: winEnv });
       child.unref();
     }
   } else {
@@ -278,11 +289,9 @@ function createMainWindow() {
 
 // ====== 系统托盘 ======
 function createTray() {
-  // 托盘图标路径
-  const iconPath = path.join(__dirname, '../../build/tray-icon.png');
-  const appIconPath = path.join(__dirname, '../../build/icon.png');
-  // 优先使用 tray-icon，回退到主 icon
-  const trayIcon = nativeImage.createFromPath(fs.existsSync(iconPath) ? iconPath : appIconPath);
+  // 托盘图标路径（src/renderer/ 在打包文件列表内）
+  const iconPath = path.join(__dirname, '../renderer/tray-icon.png');
+  const trayIcon = nativeImage.createFromPath(iconPath);
   // macOS: 缩小到 16x16 适合托盘
   const sizedIcon = process.platform === 'darwin' ? trayIcon.resize({ width: 16, height: 16 }) : trayIcon;
 
@@ -444,7 +453,7 @@ ipcMain.handle('projects:launch', async (_e, id) => {
   try {
     const termInfo = await resolveTerminal();
     if (!termInfo) return { ok: false, reason: 'no-terminal-found' };
-    launchInTerminal(termInfo, cmd);
+    launchInTerminal(termInfo, cmd, proj.path);
     return { ok: true, platform: process.platform, path: proj.path, cmd, terminal: termInfo.id, terminalLabel: termInfo.label };
   } catch (e) {
     return { ok: false, reason: e.message };
@@ -848,6 +857,15 @@ app.whenReady().then(async () => {
   }
   createMainWindow();
   createTray(); // 创建系统托盘图标
+
+  // 第二个实例启动时：聚焦已有的主窗口
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createMainWindow(); });
 });
 
