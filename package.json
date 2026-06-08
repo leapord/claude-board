@@ -71,7 +71,17 @@
       "artifactName": "ClaudeBoard-Setup-${version}-${arch}.${ext}"
     },
     "nsis": {
-      "artifactName": "ClaudeBoard-Setup-${version}-${arch}.${ext}"
+      "artifactName": "ClaudeBoard-Setup-${version}-${arch}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Claude Board"
     },
     "portable": {
       "artifactName": "ClaudeBoard-Portable-${version}-${arch}.${ext}"
