@@ -296,14 +296,16 @@ function createTray() {
 
     if (trayIcon.isEmpty()) {
       console.error('[tray] icon is empty, path:', iconPath);
-      // 回退：用 app 的 icon
-      trayIcon = nativeImage.createFromPath(path.join(__dirname, '../../build/icon.png'));
+      return;
     }
 
     if (process.platform === 'darwin') {
       // macOS: 必须设为 Template Image 才能在菜单栏正确显示（自动适配深色/浅色模式）
       trayIcon = trayIcon.resize({ width: 16, height: 16 });
       trayIcon.setTemplateImage(true);
+    } else if (process.platform === 'win32') {
+      // Windows: 缩小到 16x16，否则图标会过大或显示异常
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
     }
 
     tray = new Tray(trayIcon);
@@ -320,7 +322,9 @@ function createTray() {
     ]);
     tray.setContextMenu(contextMenu);
 
+    // 点击恢复窗口（macOS 单击，Windows 双击）
     tray.on('click', () => showMainWindow());
+    tray.on('double-click', () => showMainWindow());
     console.log('[tray] created, platform:', process.platform);
   } catch (e) {
     console.error('[tray] createTray failed:', e.message);
