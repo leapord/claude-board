@@ -90,6 +90,32 @@ function updateChartTheme(theme) {
   // 刷新当前可见图表
   chartInstances.forEach(c => { try { c.setOption(echartsBase); } catch {} });
 }
+// 热力图颜色配置（根据主题动态切换）
+function getHeatmapColors() {
+  const isLight = document.documentElement.classList.contains('theme-light');
+  if (isLight) {
+    return {
+      noData: '#ebedf0',      // 浅灰
+      level1: '#9be9a8',      // 浅绿
+      level2: '#40c463',      // 中绿
+      level3: '#30a14e',      // 深绿
+      level4: '#216e39',      // 最深绿
+      splitLine: '#ffffff',   // 白色分隔线
+      cellBg: '#f6f8fa',      // 单元格背景
+      labelColor: '#57606a',  // 标签颜色
+    };
+  }
+  return {
+    noData: '#161b22',
+    level1: '#0e4429',
+    level2: '#006d32',
+    level3: '#26a641',
+    level4: '#39d353',
+    splitLine: '#0b0d12',
+    cellBg: '#1a1f2b',
+    labelColor: '#6c7384',
+  };
+}
 // 监听系统主题变化（auto 模式）
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   if (State.settings?.theme === 'auto') applyTheme('auto');
@@ -1711,6 +1737,7 @@ async function renderHeatmap90d() {
     const chart = getOrInitChart('heatmap-90d-chart');
     if (chart && heatmap.length > 0) {
       const data = yearData.map(([k, v]) => [k, v]);
+      const hc = getHeatmapColors();
       chart.setOption({
         ...echartsBase,
         tooltip: {
@@ -1725,24 +1752,23 @@ async function renderHeatmap90d() {
           left: 'center',
           top: 0,
           pieces: [
-            { min: 0, max: 0, color: '#161b22', label: t('calendar_no_data') },
-            { min: 1, max: 3, color: '#0e4429' },
-            { min: 4, max: 8, color: '#006d32' },
-            { min: 9, max: 15, color: '#26a641' },
-            { min: 16, color: '#39d353' },
+            { min: 0, max: 0, color: hc.noData, label: t('calendar_no_data') },
+            { min: 1, max: 3, color: hc.level1 },
+            { min: 4, max: 8, color: hc.level2 },
+            { min: 9, max: 15, color: hc.level3 },
+            { min: 16, color: hc.level4 },
           ],
-          textStyle: { color: '#a3a8b8', fontSize: 11 },
+          textStyle: { color: hc.labelColor, fontSize: 11 },
         },
         calendar: {
           top: 60, left: 40, right: 30, bottom: 20,
           range: [yearStart, yearEnd],
           cellSize: ['auto', 16],
-          splitLine: { show: true, lineStyle: { color: '#0b0d12', width: 2 } },
-          // 格子底色比整体背景稍亮 → 无数据天可见、有数据天绿色对比明显
-          itemStyle: { color: '#1a1f2b', borderWidth: 3, borderColor: '#0b0d12', borderRadius: 2 },
-          yearLabel: { show: true, color: '#6c7384', fontSize: 14, margin: 40 },
-          dayLabel: { color: '#6c7384', fontSize: 10, nameMap: 'ZH', firstDay: 1 },
-          monthLabel: { color: '#6c7384', fontSize: 10, nameMap: 'ZH', margin: 6 },
+          splitLine: { show: true, lineStyle: { color: hc.splitLine, width: 2 } },
+          itemStyle: { color: hc.cellBg, borderWidth: 3, borderColor: hc.splitLine, borderRadius: 2 },
+          yearLabel: { show: true, color: hc.labelColor, fontSize: 14, margin: 40 },
+          dayLabel: { color: hc.labelColor, fontSize: 10, nameMap: 'ZH', firstDay: 1 },
+          monthLabel: { color: hc.labelColor, fontSize: 10, nameMap: 'ZH', margin: 6 },
         },
         series: [{
           type: 'heatmap',
@@ -1763,27 +1789,29 @@ async function renderHeatmap90d() {
       const last30 = heatmap.slice(-30);
       const days = last30.map(([k]) => k.slice(5)); // MM-DD
       const vals = last30.map(([_, v]) => v);
+      const hc = getHeatmapColors();
+      const isLight = document.documentElement.classList.contains('theme-light');
       barChart.setOption({
         ...echartsBase,
         grid: { left: 40, right: 20, top: 20, bottom: 30 },
         tooltip: { ...echartsBase.tooltip, trigger: 'axis' },
         xAxis: {
           type: 'category', data: days,
-          axisLine: { lineStyle: { color: '#2a2f3d' } },
-          axisLabel: { color: '#6c7384', fontSize: 10, interval: 2 },
+          axisLine: { lineStyle: { color: isLight ? '#d1d5db' : '#2a2f3d' } },
+          axisLabel: { color: hc.labelColor, fontSize: 10, interval: 2 },
         },
         yAxis: {
           type: 'value',
-          splitLine: { lineStyle: { color: '#2a2f3d' } },
-          axisLabel: { color: '#6c7384', fontSize: 10 },
+          splitLine: { lineStyle: { color: isLight ? '#e5e7eb' : '#2a2f3d' } },
+          axisLabel: { color: hc.labelColor, fontSize: 10 },
         },
         series: [{
           type: 'bar', data: vals,
           itemStyle: {
             borderRadius: [3, 3, 0, 0],
             color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#39d353' },
-              { offset: 1, color: '#0e4429' },
+              { offset: 0, color: hc.level4 },
+              { offset: 1, color: hc.level1 },
             ]),
           },
           barMaxWidth: 16,
@@ -1850,6 +1878,8 @@ async function renderOverviewHeatmap() {
   }
 
   // 圆点
+  const hc = getHeatmapColors();
+  const heatmapColorLevels = [hc.noData, hc.level1, hc.level2, hc.level3, hc.level4];
   let dotsSvg = '';
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
@@ -1859,7 +1889,7 @@ async function renderOverviewHeatmap() {
       const key = cellDate.toISOString().slice(0, 10);
       const v = byDate.get(key) || 0;
       const lvl = v === 0 ? 0 : Math.min(4, Math.ceil((v / maxV) * 4));
-      const fill = ['#161b22', '#0e4429', '#006d32', '#26a641', '#39d353'][lvl];
+      const fill = heatmapColorLevels[lvl];
       const rx = MARGIN_LEFT + w * STEP;
       const ry = MARGIN_TOP + d * STEP;
       const isToday = key === todayStr;
