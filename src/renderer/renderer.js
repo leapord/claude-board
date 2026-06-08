@@ -464,7 +464,7 @@ async function refreshSidebarHeatmap() {
   while (cells.length < 105) cells.unshift('<div class="heatmap-mini__cell"></div>');
   wrap.innerHTML = cells.join('');
   const total = heatmap.reduce((s, [_, v]) => s + v, 0);
-  $('#heatmap-365-count').textContent = `365d · ${heatmap.filter(([_, v]) => v > 0).length}`;
+  $('#heatmap-365-count').textContent = t('heatmap_365d') + heatmap.filter(([_, v]) => v > 0).length;
   $('#brand-status').textContent = `${t("sb_ready")} · ${d?.stats?.[0]?.value || 0}`;
 }
 
@@ -725,7 +725,7 @@ async function renderOverview() {
         axisLine: { lineStyle: { color: '#2a2f3d' } }, axisLabel: { color: '#6c7384', fontSize: 10 } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#2a2f3d' } }, axisLabel: { color: '#6c7384', fontSize: 10 } },
       series: [{
-        name: '启动次数', type: 'line', smooth: true, data: d.trendData,
+        name: t('overview_sessions'), type: 'line', smooth: true, data: d.trendData,
         symbolSize: 6, itemStyle: { color: '#5b9dff' },
         lineStyle: { width: 2, color: '#5b9dff' },
         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -1139,12 +1139,12 @@ async function renderProfiles() {
               </div>
             </div>
             <div class="profile-env-grid" style="margin-top:8px;">
-              <div class="profile-env-item"><span class="profile-env-key">Base URL</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_BASE_URL || '—')}</span></div>
-              <div class="profile-env-item"><span class="profile-env-key">Token</span><span class="profile-env-val">${maskedToken}</span></div>
-              <div class="profile-env-item"><span class="profile-env-key">默认模型</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_MODEL || '—')}</span></div>
-              <div class="profile-env-item"><span class="profile-env-key">Haiku</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_HAIKU_MODEL || '—')}</span></div>
-              <div class="profile-env-item"><span class="profile-env-key">Sonnet</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_SONNET_MODEL || '—')}</span></div>
-              <div class="profile-env-item"><span class="profile-env-key">Opus</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_OPUS_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_base_url')}</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_BASE_URL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_token')}</span><span class="profile-env-val">${maskedToken}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_default_model')}</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_haiku')}</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_HAIKU_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_sonnet')}</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_SONNET_MODEL || '—')}</span></div>
+              <div class="profile-env-item"><span class="profile-env-key">${t('profiles_env_opus')}</span><span class="profile-env-val">${esc(p.env?.ANTHROPIC_DEFAULT_OPUS_MODEL || '—')}</span></div>
             </div>
           </div>
         `;
@@ -1157,14 +1157,14 @@ async function renderProfiles() {
         const name = btn.dataset.name;
         if (act === 'switch') btn.addEventListener('click', async () => {
           const r = await cb.profiles.switchTo(name);
-          if (r.ok) { flashToast('✅ 已切换到 ' + name); renderProfiles(); }
-          else flashToast('⚠ 切换失败: ' + (r.reason || '未知'));
+          if (r.ok) { flashToast(t('profiles_switched') + name); renderProfiles(); }
+          else flashToast(t('profiles_switch_failed') + (r.reason || t('unknown_error')));
         });
         if (act === 'edit') btn.addEventListener('click', () => editProfileModal(name));
         if (act === 'delete') btn.addEventListener('click', async () => {
-          if (await cb.dialog.confirm({ message: `确定删除配置组 "${name}"？`, detail: '只会删除配置文件，不影响已生效的环境变量。' })) {
+          if (await cb.dialog.confirm({ message: t('profiles_delete_confirm') + ` "${name}"？`, detail: t('profiles_delete_detail') })) {
             await cb.profiles.delete(name);
-            flashToast('✓ 已删除 ' + name);
+            flashToast(t('toast_profile_deleted') + name);
             renderProfiles();
           }
         });
@@ -1179,15 +1179,15 @@ async function renderProfiles() {
 
 // ====== Profile 表单弹窗（统一新建/编辑）======
 const PROFILE_FIELDS = [
-  { key: 'ANTHROPIC_BASE_URL',                       label: 'API Base URL',   ph: 'https://api.anthropic.com' },
-  { key: 'ANTHROPIC_AUTH_TOKEN',                      label: 'Auth Token',     ph: 'sk-ant-...' },
-  { key: 'ANTHROPIC_MODEL',                           label: '默认模型',        ph: 'claude-sonnet-4-20250514' },
-  { key: 'ANTHROPIC_DEFAULT_HAIKU_MODEL',             label: 'Haiku 模型',     ph: 'claude-haiku-4-20250514' },
-  { key: 'ANTHROPIC_DEFAULT_SONNET_MODEL',            label: 'Sonnet 模型',    ph: 'claude-sonnet-4-20250514' },
-  { key: 'ANTHROPIC_DEFAULT_OPUS_MODEL',              label: 'Opus 模型',      ph: 'claude-opus-4-20250514' },
-  { key: 'CLAUDE_CODE_SUBAGENT_MODEL',                label: 'Subagent 模型',  ph: 'claude-haiku-4-20250514' },
-  { key: 'API_TIMEOUT_MS',                            label: '超时 (ms)',      ph: '3000000' },
-  { key: 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',  label: '禁用非必要流量',  ph: '1' },
+  { key: 'ANTHROPIC_BASE_URL',                       label: () => t('profiles_env_base_url_label'),   ph: 'https://api.anthropic.com' },
+  { key: 'ANTHROPIC_AUTH_TOKEN',                      label: () => t('profiles_env_auth_token_label'), ph: 'sk-ant-...' },
+  { key: 'ANTHROPIC_MODEL',                           label: () => t('profiles_env_default_model_label'), ph: 'claude-sonnet-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_HAIKU_MODEL',             label: () => t('profiles_env_haiku_label'), ph: 'claude-haiku-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_SONNET_MODEL',            label: () => t('profiles_env_sonnet_label'), ph: 'claude-sonnet-4-20250514' },
+  { key: 'ANTHROPIC_DEFAULT_OPUS_MODEL',              label: () => t('profiles_env_opus_label'), ph: 'claude-opus-4-20250514' },
+  { key: 'CLAUDE_CODE_SUBAGENT_MODEL',                label: () => t('profiles_env_subagent_label'), ph: 'claude-haiku-4-20250514' },
+  { key: 'API_TIMEOUT_MS',                            label: () => t('profiles_env_timeout_label'), ph: '3000000' },
+  { key: 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',  label: () => t('profiles_env_disable_label'), ph: '1' },
 ];
 
 function showProfileFormModal({ title, nameValue, descValue, envValues, confirmLabel, onConfirm }) {
@@ -1196,7 +1196,7 @@ function showProfileFormModal({ title, nameValue, descValue, envValues, confirmL
     overlay.className = 'modal-overlay';
     const fieldsHtml = PROFILE_FIELDS.map(f => `
       <div class="pf-field">
-        <label class="pf-field__label" for="pf-${f.key}">${esc(f.label)}</label>
+        <label class="pf-field__label" for="pf-${f.key}">${esc(typeof f.label === 'function' ? f.label() : f.label)}</label>
         <input class="input pf-field__input" id="pf-${f.key}" data-key="${f.key}"
                value="${esc(envValues[f.key] || '')}" placeholder="${esc(f.ph)}" />
       </div>
@@ -1257,8 +1257,8 @@ async function addProfileModal() {
     confirmLabel: t('profiles_form_create'),
     onConfirm: async ({ name, description, env }) => {
       const r = await cb.profiles.add({ name, description, env });
-      if (r.ok) { flashToast('✅ 配置组 ' + name + ' 已创建'); renderProfiles(); }
-      else { await alertModal({ title: '创建失败', message: r.reason === 'duplicate' ? '同名配置组已存在' : (r.reason || '未知错误') }); }
+      if (r.ok) { flashToast(t('profiles_created') + name + t('profiles_created_suffix')); renderProfiles(); }
+      else { await alertModal({ title: t('profiles_create_failed'), message: r.reason === 'duplicate' ? t('profiles_create_failed_duplicate') : (r.reason || t('unknown_error')) }); }
       return r;
     },
   });
@@ -1266,7 +1266,7 @@ async function addProfileModal() {
 
 async function editProfileModal(name) {
   const p = await cb.profiles.get(name);
-  if (!p) { flashToast('⚠ 配置组不存在'); return; }
+  if (!p) { flashToast(t('profiles_not_found')); return; }
   await showProfileFormModal({
     title: t('profiles_form_title_edit') + name,
     nameValue: name,
@@ -1275,7 +1275,7 @@ async function editProfileModal(name) {
     confirmLabel: t('profiles_form_save'),
     onConfirm: async ({ description, env }) => {
       await cb.profiles.update(name, { description, env });
-      flashToast('✓ 已更新 ' + name);
+      flashToast(t('profiles_updated') + name);
       renderProfiles();
       return { ok: true };
     },
@@ -1293,7 +1293,7 @@ async function renderModels() {
         <div class="model-card__name">${esc(m.name)}</div>
         <div class="model-card__bar"><div class="model-card__bar-fill" style="width:${m.bar}%"></div></div>
         <div class="model-card__stats">
-          <span>${m.count} 次</span>
+          <span>${m.count} ${t('models_times')}</span>
           <span>${esc(m.inTok)} in / ${esc(m.outTok)} out</span>
         </div>
         <div class="model-card__cost">${esc(m.cost)}</div>
@@ -1315,8 +1315,8 @@ async function renderModels() {
         <td>${esc(p.cw)}</td>
         <td>${esc(p.cr)}</td>
         <td>
-          <span class="price-table__action" data-edit="${esc(p.name)}">编辑</span>
-          <span class="price-table__action" data-delete="${esc(p.name)}" style="color:var(--red);margin-left:8px;">删除</span>
+          <span class="price-table__action" data-edit="${esc(p.name)}">${t('models_edit')}</span>
+          <span class="price-table__action" data-delete="${esc(p.name)}" style="color:var(--red);margin-left:8px;">${t('models_delete')}</span>
         </td>
       </tr>
     `).join('');
@@ -1325,9 +1325,9 @@ async function renderModels() {
     // 删除自定义模型
     tbody.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', async () => {
       const name = b.dataset.delete;
-      if (await cb.dialog.confirm({ message: `确定删除 ${name} 的价格配置？`, detail: '删除后将使用内置默认价格。' })) {
+      if (await cb.dialog.confirm({ message: t('models_confirm_delete') + ' ' + name + '?', detail: t('models_confirm_delete_detail') })) {
         await cb.models.deletePrice?.(name) || await ipcRenderer?.invoke('models:delete-price', name);
-        flashToast('✓ 已删除 ' + name);
+        flashToast(t('models_deleted') + name);
         renderModels();
       }
     }));
@@ -1345,47 +1345,47 @@ async function editModelPrice(name) {
   // 从 preload 获取当前价格
   const prices = await cb.models.listPrices?.() || {};
   const cur = prices[name] || { in: 0, out: 0, cw: 0, cr: 0 };
-  const inVal = await promptModal({ title: `编辑 ${name} — Input 价格`, message: 'Input 价格 ($/1M tokens)', defaultValue: String(cur.in || 0), placeholder: '0.00' });
+  const inVal = await promptModal({ title: t('models_edit_price_title') + ' ' + name + ' — ' + t('models_input_price'), message: t('models_price_unit'), defaultValue: String(cur.in || 0), placeholder: '0.00' });
   if (inVal === null) return;
-  const outVal = await promptModal({ title: `编辑 ${name} — Output 价格`, message: 'Output 价格 ($/1M tokens)', defaultValue: String(cur.out || 0), placeholder: '0.00' });
+  const outVal = await promptModal({ title: t('models_edit_price_title') + ' ' + name + ' — ' + t('models_output_price'), message: t('models_price_unit'), defaultValue: String(cur.out || 0), placeholder: '0.00' });
   if (outVal === null) return;
-  const cwVal = await promptModal({ title: `编辑 ${name} — Cache Write 价格`, message: 'Cache Write 价格 ($/1M tokens)', defaultValue: String(cur.cw || 0), placeholder: '0.00' });
+  const cwVal = await promptModal({ title: t('models_edit_price_title') + ' ' + name + ' — ' + t('models_cw_price'), message: t('models_price_unit'), defaultValue: String(cur.cw || 0), placeholder: '0.00' });
   if (cwVal === null) return;
-  const crVal = await promptModal({ title: `编辑 ${name} — Cache Read 价格`, message: 'Cache Read 价格 ($/1M tokens)', defaultValue: String(cur.cr || 0), placeholder: '0.00' });
+  const crVal = await promptModal({ title: t('models_edit_price_title') + ' ' + name + ' — ' + t('models_cr_price'), message: t('models_price_unit'), defaultValue: String(cur.cr || 0), placeholder: '0.00' });
   if (crVal === null) return;
   const r = await cb.models.updatePrice?.({
     name,
     price: { in: +inVal, out: +outVal, cw: +cwVal, cr: +crVal },
   });
   if (r?.ok) {
-    flashToast('✓ 已更新 ' + name + ' 价格');
+    flashToast(t('models_updated_price') + name + t('models_updated_price_suffix'));
     renderModels();
   } else {
-    await alertModal({ title: '更新失败', message: r?.reason || '未知错误' });
+    await alertModal({ title: t('models_update_failed'), message: r?.reason || t('unknown_error') });
   }
 }
 
 // 添加自定义模型
 async function addCustomModel() {
-  const name = await promptModal({ title: '添加自定义模型', message: '模型名称（如 my-model-v1）：', placeholder: '模型名' });
+  const name = await promptModal({ title: t('models_add_custom_title'), message: t('models_add_custom_message'), placeholder: t('models_add_custom_placeholder') });
   if (!name || !name.trim()) return;
-  const inVal = await promptModal({ title: `${name.trim()} — Input 价格`, message: '$/1M tokens', defaultValue: '1.0', placeholder: '0.00' });
+  const inVal = await promptModal({ title: `${name.trim()} — ${t('models_input_price')}`, message: '$/1M tokens', defaultValue: '1.0', placeholder: '0.00' });
   if (inVal === null) return;
-  const outVal = await promptModal({ title: `${name.trim()} — Output 价格`, message: '$/1M tokens', defaultValue: '3.0', placeholder: '0.00' });
+  const outVal = await promptModal({ title: `${name.trim()} — ${t('models_output_price')}`, message: '$/1M tokens', defaultValue: '3.0', placeholder: '0.00' });
   if (outVal === null) return;
-  const cwVal = await promptModal({ title: `${name.trim()} — Cache Write`, message: '$/1M tokens', defaultValue: '1.25', placeholder: '0.00' });
+  const cwVal = await promptModal({ title: `${name.trim()} — ${t('models_cw_price')}`, message: '$/1M tokens', defaultValue: '1.25', placeholder: '0.00' });
   if (cwVal === null) return;
-  const crVal = await promptModal({ title: `${name.trim()} — Cache Read`, message: '$/1M tokens', defaultValue: '0.1', placeholder: '0.00' });
+  const crVal = await promptModal({ title: `${name.trim()} — ${t('models_cr_price')}`, message: '$/1M tokens', defaultValue: '0.1', placeholder: '0.00' });
   if (crVal === null) return;
   const r = await cb.models.updatePrice?.({
     name: name.trim(),
     price: { in: +inVal, out: +outVal, cw: +cwVal, cr: +crVal },
   });
   if (r?.ok) {
-    flashToast('✓ 已添加 ' + name.trim());
+    flashToast(t('models_added') + name.trim());
     renderModels();
   } else {
-    await alertModal({ title: '添加失败', message: r?.reason || '未知错误' });
+    await alertModal({ title: t('models_add_failed'), message: r?.reason || t('unknown_error') });
   }
 }
 
@@ -1429,7 +1429,7 @@ async function renderTokens() {
       </tr>`;
     }).join('');
     rows += `<tr class="token-table__total">
-      <td><b>合计</b></td>
+      <td><b>${t('token_total')}</b></td>
       <td><b>${fmtTok(totalIn)}</b></td><td><b>${fmtTok(totalOut)}</b></td><td>—</td><td>—</td>
       <td><b>${fmtTok(totalIn + totalOut)}</b></td>
       <td class="token-table__cost"><b>$${models.cards.reduce((s, m) => s + parseFloat(m.cost.replace('$','')), 0).toFixed(2)}</b></td>
@@ -1484,7 +1484,7 @@ async function renderTokens() {
         axisLine: { lineStyle: { color: '#2a2f3d' } }, axisLabel: { color: '#6c7384', fontSize: 10 } },
       yAxis: { type: 'value', splitLine: { lineStyle: { color: '#2a2f3d' } }, axisLabel: { color: '#6c7384', fontSize: 10 } },
       series: [{
-        name: '对话次数', type: 'line', smooth: true, data: trendData,
+        name: t('token_sessions'), type: 'line', smooth: true, data: trendData,
         symbolSize: 5, itemStyle: { color: '#4ade80' },
         lineStyle: { width: 2, color: '#4ade80' },
         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -1539,7 +1539,7 @@ async function renderLevels() {
     const text = hero.querySelector('.level-info__progress-text');
     if (text) {
       text.children[0].textContent = `${c.score.toLocaleString()} / ${c.target.toLocaleString()} ${t("levels_points")}`;
-      text.children[1].textContent = c.target > c.score ? `${t("levels_next")} Lv.${c.lv + 1} ${t("levels_need")} ${(c.target - c.score).toLocaleString()} ${t("levels_points")}` : `已满级`;
+      text.children[1].textContent = c.target > c.score ? `${t("levels_next")} Lv.${c.lv + 1} ${t("levels_need")} ${(c.target - c.score).toLocaleString()} ${t("levels_points")}` : t('levels_max_level');
     }
   }
   const stats = $('.level-stats');
@@ -1547,7 +1547,7 @@ async function renderLevels() {
     stats.children[0].children[1].textContent = `${c.lv} / 99`;
     stats.children[1].children[1].textContent = LEVEL_TITLES[Math.min(c.lv, LEVEL_TITLES.length)] || `Lv.${c.lv + 1}`;
     stats.children[2].children[1].textContent = c.score.toLocaleString();
-    stats.children[3].children[1].textContent = c.streak > 0 ? `↑ 活跃 ${c.streak} 天` : '—';
+    stats.children[3].children[1].textContent = c.streak > 0 ? t('levels_active_streak') + c.streak + t('levels_active_days') : '—';
   }
   // 动态渲染段位卡（基于真实等级）
   const sprout = $('#level-grid-sprout');
@@ -1593,21 +1593,21 @@ async function renderLevels() {
 // 等级页帮助按钮：显示升级规则弹窗
 $('#btn-level-help')?.addEventListener('click', () => {
   alertModal({
-    title: '🏆 升级规则',
+    title: t('levels_help_title'),
     message:
-      '【积分获取方式】\n' +
-      '· 每次启动 Claude Code 会话：+10 分\n' +
-      '· 每输入 1K tokens：+1 分\n' +
-      '· 每输出 1K tokens：+2 分\n' +
-      '· 每天连续使用：额外 +5 分（连续奖励）\n\n' +
-      '【等级与所需积分】\n' +
-      '· Lv.1-5（萌芽段）：每级需 500-2,500 分\n' +
-      '· Lv.6-10（学者段）：每级需 3,000-6,200 分\n' +
-      '· Lv.11-20（工匠段）：每级需 8,000-25,000 分\n' +
-      '· Lv.21-50（专家段）：每级需 30,000-80,000 分\n' +
-      '· Lv.51-99（大师段）：每级需 100,000-500,000 分\n' +
-      '· Lv.99（AI 大牛）：满级特殊奖励 🏆',
-    confirmLabel: '知道了',
+      t('levels_help_score_title') + '\n' +
+      t('levels_help_session') + '\n' +
+      t('levels_help_input') + '\n' +
+      t('levels_help_output') + '\n' +
+      t('levels_help_streak') + '\n\n' +
+      t('levels_help_level_title') + '\n' +
+      t('levels_help_sprout') + '\n' +
+      t('levels_help_scholar') + '\n' +
+      t('levels_help_craftsman') + '\n' +
+      t('levels_help_expert') + '\n' +
+      t('levels_help_master') + '\n' +
+      t('levels_help_max'),
+    confirmLabel: t('levels_help_got_it'),
   });
 });
 
@@ -1684,10 +1684,10 @@ async function renderHeatmap90d() {
   const statsWrap = $('#heatmap-90d-stats');
   if (statsWrap) {
     const defaultStats = stats.length > 0 ? stats : [
-      { label: '总活跃天数', value: String(activeDays), delta: `/ ${daysPassed} 天` },
-      { label: '当前连续', value: '0 天', delta: '—' },
-      { label: '日均启动', value: daysPassed > 0 ? (activeDays / daysPassed).toFixed(1) + ' 次' : '0 次', delta: '—' },
-      { label: '本周活跃', value: '0 / 7', delta: '—' },
+      { label: t('heatmap_total_active_days'), value: String(activeDays), delta: `/ ${daysPassed} ${t('heatmap_day_unit')}` },
+      { label: t('heatmap_current_streak'), value: '0 ' + t('heatmap_day_unit'), delta: '—' },
+      { label: t('heatmap_daily_avg'), value: daysPassed > 0 ? (activeDays / daysPassed).toFixed(1) + ' ' + t('heatmap_times_unit') : '0 ' + t('heatmap_times_unit'), delta: '—' },
+      { label: t('heatmap_weekly_active'), value: '0 / 7', delta: '—' },
     ];
     statsWrap.innerHTML = defaultStats.map(s => `
       <div class="card stat-card">
@@ -1701,7 +1701,7 @@ async function renderHeatmap90d() {
   // 副标题
   const sub = $('#heatmap-90d-sub');
   if (sub) {
-    sub.textContent = `${year} 年 · 活跃 ${activeDays} / ${daysPassed} 天`;
+    sub.textContent = year + t('heatmap_year_active') + activeDays + ' / ' + daysPassed + t('heatmap_days');
   }
 
   // ECharts 日历热力图 — 整个自然年
@@ -1725,7 +1725,7 @@ async function renderHeatmap90d() {
           left: 'center',
           top: 0,
           pieces: [
-            { min: 0, max: 0, color: '#161b22', label: '无' },
+            { min: 0, max: 0, color: '#161b22', label: t('calendar_no_data') },
             { min: 1, max: 3, color: '#0e4429' },
             { min: 4, max: 8, color: '#006d32' },
             { min: 9, max: 15, color: '#26a641' },
@@ -1797,7 +1797,7 @@ async function renderHeatmap90d() {
 $('#btn-heatmap-refresh')?.addEventListener('click', async () => {
   await cb.data.rescan();
   renderHeatmap90d();
-  flashToast('✓ 热力图已刷新');
+  flashToast(t('toast_heatmap_refreshed'));
 });
 
 // ============================================================
@@ -1837,12 +1837,12 @@ async function renderOverviewHeatmap() {
     colDate.setDate(colDate.getDate() + w * 7);
     if (colDate.getDate() <= 7 && colDate.getMonth() !== lastMonth && colDate >= firstMonday) {
       const x = MARGIN_LEFT + w * STEP + R;
-      monthsSvg += `<text x="${x}" y="13" font-size="10" fill="#a3a8b8" font-weight="500">${colDate.getMonth() + 1}月</text>`;
+      monthsSvg += `<text x="${x}" y="13" font-size="10" fill="#a3a8b8" font-weight="500">${colDate.getMonth() + 1}${t('heatmap_month_suffix')}</text>`;
       lastMonth = colDate.getMonth();
     }
   }
   // 星期标签（左侧一/三/五）
-  const dayLabels = [['一', 0], ['三', 3], ['五', 5]];
+  const dayLabels = [[t('heatmap_day_mon'), 0], [t('heatmap_day_wed'), 3], [t('heatmap_day_fri'), 5]];
   let daysSvg = '';
   for (const [label, row] of dayLabels) {
     const y = MARGIN_TOP + row * STEP + R + 3;
@@ -1864,7 +1864,7 @@ async function renderOverviewHeatmap() {
       const ry = MARGIN_TOP + d * STEP;
       const isToday = key === todayStr;
       const ring = isToday ? `<rect x="${rx - 1}" y="${ry - 1}" width="${CELL + 2}" height="${CELL + 2}" rx="3" fill="none" stroke="#5b9dff" stroke-width="1.2"/>` : '';
-      const dateStr = `${key} · ${v} 次活动${isToday ? ' · 今天' : ''}`;
+      const dateStr = `${key} · ${v} ${t('heatmap_times')}${isToday ? ' · ' + t('heatmap_today') : ''}`;
       dotsSvg += `<rect x="${rx}" y="${ry}" width="${CELL}" height="${CELL}" rx="3" fill="${fill}" data-date="${key}" data-v="${v}" data-today="${isToday ? '1' : '0'}"><title>${dateStr}</title></rect>${ring}`;
     }
   }
@@ -1925,11 +1925,11 @@ async function renderOverviewHeatmap() {
   }
   const hs = (sel, v) => { const el = document.querySelector(`[data-hs="${sel}"]`); if (el) el.textContent = v; };
   hs('maxDay', maxV2 || '—');
-  hs('maxDayHint', maxDate ? `${maxDate} · ${maxV2} 次` : '暂无');
+  hs('maxDayHint', maxDate ? `${maxDate} · ${maxV2} ${t('heatmap_times_unit')}` : t('heatmap_no_data'));
   hs('active30', active30);
   hs('streak', currentStreak);
   hs('lastActive', lastActive ? lastActive.slice(5) : '—');
-  hs('lastActiveHint', lastActive ? `${lastActive} · ${byDate2.get(lastActive) || 0} 次` : '—');
+  hs('lastActiveHint', lastActive ? `${lastActive} · ${byDate2.get(lastActive) || 0} ${t('heatmap_times_unit')}` : '—');
   hs('totalActive', heatmap.filter(([_, v]) => v > 0).length);
 
   // tooltip 监听
@@ -1938,7 +1938,7 @@ async function renderOverviewHeatmap() {
     wrap.querySelectorAll('rect[data-date]').forEach(c => {
       c.addEventListener('mouseenter', () => {
         const isToday = c.dataset.today === '1';
-        tip.textContent = `${c.dataset.date} · ${c.dataset.v} 次活动${isToday ? ' · 今天' : ''}`;
+        tip.textContent = `${c.dataset.date} · ${c.dataset.v} ${t('heatmap_times')}${isToday ? ' · ' + t('heatmap_today') : ''}`;
         tip.hidden = false;
       });
       c.addEventListener('mousemove', (e) => {
@@ -1998,12 +1998,12 @@ async function initTerminalFromSettings() {
     xterm._started = true;
     const r = await cb.terminal.start();
     if (r?.ok) {
-      xterm.write(`\x1b[36m┌─ Claude Board 终端 ─────────────────────\x1b[0m\r\n`);
+      xterm.write(`\x1b[36m┌─ ${t('terminal_header')} ─────────────────────\x1b[0m\r\n`);
       xterm.write(`\x1b[36m│\x1b[0m \x1b[32m${r.shell}\x1b[0m · pid \x1b[33m${r.pid}\x1b[0m · cwd \x1b[35m${r.cwd}\x1b[0m\r\n`);
-      xterm.write(`\x1b[36m│\x1b[0m TERM=\x1b[33mxterm-256color\x1b[0m · \x1b[2m完整环境变量已透传\x1b[0m\r\n`);
+      xterm.write(`\x1b[36m│\x1b[0m TERM=\x1b[33mxterm-256color\x1b[0m · \x1b[2m${t('terminal_env_passed')}\x1b[0m\r\n`);
       xterm.write(`\x1b[36m└──────────────────────────────────────────\x1b[0m\r\n`);
     } else {
-      xterm.write(`\x1b[31m[启动失败] ${r?.err || '未知错误'}\x1b[0m\r\n`);
+      xterm.write(`\x1b[31m${t('toast_terminal_start_failed')}${r?.err || t('unknown_error')}\x1b[0m\r\n`);
       xterm._started = false;
     }
   }
@@ -2019,7 +2019,7 @@ $('#btn-terminal-restart')?.addEventListener('click', async () => {
   await cb.terminal.close();
   xterm._started = false;
   xterm.clear();
-  xterm.write('\x1b[33m[重启 shell 对话…]\x1b[0m\r\n');
+  xterm.write('\x1b[33m' + t('toast_terminal_restarting') + '\x1b[0m\r\n');
   await initTerminalFromSettings();
 });
 
@@ -2027,16 +2027,16 @@ $('#btn-terminal-restart')?.addEventListener('click', async () => {
 // 屏 10：导出（真保存）
 // ============================================================
 const exportState = { range: 'week', includes: ['projects','tokens','models','levels'], format: 'md' };
-const EXPORT_RANGES = [['week','本周'],['lastweek','上周'],['month','本月'],['custom','自定义...']];
+const EXPORT_RANGES = [['week','export_week'],['lastweek','export_lastweek'],['month','export_month'],['custom','export_custom']];
 const EXPORT_INCLUDES = [
-  ['projects','项目活动概览', true],
-  ['tokens','Token 消耗明细', true],
-  ['models','模型分布', true],
-  ['levels','等级进度', true],
-  ['heatmap','热力图截图', false],
-  ['cost','成本明细（USD）', false],
+  ['projects','export_projects_overview', true],
+  ['tokens','export_tokens_detail', true],
+  ['models','export_models_dist', true],
+  ['levels','export_levels_progress', true],
+  ['heatmap','export_heatmap_screenshot', false],
+  ['cost','export_cost_detail', false],
 ];
-const EXPORT_FORMATS = [['md','📄 Markdown'],['html','📊 HTML'],['json','🧩 JSON'],['txt','📝 纯文本']];
+const EXPORT_FORMATS = [['md','export_md'],['html','export_html'],['json','export_json'],['txt','export_txt']];
 
 function renderExport() {
   const d = window.__lastExportData || null;
@@ -2046,7 +2046,7 @@ function renderExport() {
   if (range) {
     range.innerHTML = EXPORT_RANGES.map(([k,l]) => `
       <div class="radio ${k===exportState.range?'radio--active':''}" data-range="${k}">
-        <div class="radio__dot"></div><div>${l}</div>
+        <div class="radio__dot"></div><div>${t(l)}</div>
       </div>
     `).join('');
     range.querySelectorAll('.radio').forEach(r => r.addEventListener('click', () => { exportState.range = r.dataset.range; renderExport(); }));
@@ -2055,7 +2055,7 @@ function renderExport() {
   if (inc) {
     inc.innerHTML = EXPORT_INCLUDES.map(([k,l]) => {
       const checked = exportState.includes.includes(k);
-      return `<div class="checkbox ${checked?'checkbox--active':''}" data-include="${k}"><div class="checkbox__box"></div><div>${l}</div></div>`;
+      return `<div class="checkbox ${checked?'checkbox--active':''}" data-include="${k}"><div class="checkbox__box"></div><div>${t(l)}</div></div>`;
     }).join('');
     inc.querySelectorAll('.checkbox').forEach(c => c.addEventListener('click', () => {
       const k = c.dataset.include;
@@ -2068,7 +2068,7 @@ function renderExport() {
   if (fmt) {
     fmt.innerHTML = EXPORT_FORMATS.map(([k,l]) => `
       <div class="radio ${k===exportState.format?'radio--active':''}" data-fmt="${k}">
-        <div class="radio__dot"></div><div>${l}</div>
+        <div class="radio__dot"></div><div>${t(l)}</div>
       </div>
     `).join('');
     fmt.querySelectorAll('.radio').forEach(r => r.addEventListener('click', () => { exportState.format = r.dataset.fmt; renderExport(); }));
@@ -2081,40 +2081,40 @@ function renderExport() {
 }
 
 function generateMarkdown(d) {
-  if (!d) return '<div style="color:var(--text-2);text-align:center;">数据加载中…</div>';
+  if (!d) return `<div style="color:var(--text-2);text-align:center;">${t('export_loading')}</div>`;
   const md = [];
-  md.push(`# 📊 Claude Board 周报`);
-  md.push(`${new Date().toISOString().slice(0,10)} · 由 Claude Board 自动生成 · 数据源: ${d.meta?.logsPath || '—'}`);
+  md.push(t('export_report_title'));
+  md.push(`${new Date().toISOString().slice(0,10)} · ${t('export_generated_by')} · ${t('export_data_source')}: ${d.meta?.logsPath || '—'}`);
   md.push('');
-  md.push('## 🎯 本周概览');
+  md.push(t('export_weekly_overview'));
   (d.stats || []).forEach(s => md.push(`- **${s.label}**：${s.value} (${s.delta})`));
   md.push('');
   if (exportState.includes.includes('projects') && d.recentProjects) {
-    md.push('## 📁 项目活动');
+    md.push(t('export_projects'));
     d.recentProjects.forEach(p => md.push(`- **${p.name}** · \`${p.path}\` · ${p.model}`));
     md.push('');
   }
   if (exportState.includes.includes('models') && d.pieData) {
-    md.push('## 🤖 模型分布');
+    md.push(t('export_models'));
     d.pieData.forEach(p => md.push(`- **${p.name}**：${p.value}M tokens`));
     md.push('');
   }
   if (exportState.includes.includes('tokens')) {
-    md.push('## 💎 Token 详情');
-    md.push('| 类型 | 用量 |');
+    md.push(t('export_tokens'));
+    md.push('| ' + t('export_types') + ' | ' + t('export_usage') + ' |');
     md.push('|------|------|');
     md.push('| Input | ' + (d.stats?.[0]?.value || '—') + ' |');
     md.push('| Output | ' + (d.stats?.[1]?.value || '—') + ' |');
     md.push('');
   }
   if (exportState.includes.includes('levels')) {
-    md.push('## 🏆 等级进度');
-    md.push('- 当前等级、积分、距下一级见应用内');
+    md.push(t('export_levels'));
+    md.push('- ' + t('export_current_level'));
     md.push('');
   }
   if (exportState.includes.includes('cost')) {
-    md.push('## 💰 成本');
-    md.push('- 见应用内 Cost 字段');
+    md.push(t('export_cost'));
+    md.push('- ' + t('export_see_app'));
     md.push('');
   }
   return md.map(line => {
@@ -2145,21 +2145,21 @@ $('#export-do')?.addEventListener('click', async () => {
     window.__lastExportData = await cb.data.getOverview();
   }
   const d = window.__lastExportData;
-  if (!d) { flashToast('⚠ 数据未就绪'); return; }
+  if (!d) { flashToast(t('toast_data_not_ready')); return; }
   const md = mdToPlain($('#export-preview').innerHTML);
   const r = await cb.export.save({
     content: md,
     defaultName: `claude-board-${new Date().toISOString().slice(0,10)}.${exportState.format}`,
     format: exportState.format,
   });
-  if (r.ok) flashToast('✓ 已保存到 ' + r.path);
-  else if (r.reason === 'canceled') flashToast(t('cancel'));
-  else flashToast('✗ ' + r.reason);
+  if (r.ok) flashToast(t('toast_export_saved') + r.path);
+  else if (r.reason === 'canceled') flashToast(t('toast_export_canceled'));
+  else flashToast(t('toast_export_failed') + r.reason);
 });
 $('#export-copy')?.addEventListener('click', async () => {
   const md = mdToPlain($('#export-preview').innerHTML);
   await cb.clipboard.write(md);
-  flashToast('✓ 已复制到剪贴板');
+  flashToast(t('toast_copied_clipboard'));
 });
 
 // 进入 export 屏时拉最新数据
@@ -2343,7 +2343,7 @@ async function bootstrap() {
       State.settings._version = info.version;
       State.settings._platform = info.platform;
       const v = $('#titlebar-version');
-      if (v) v.textContent = `v${info.version} · 13 屏`;
+      if (v) v.textContent = `v${info.version} · 13 ${t('version_screens')}`;
       const sv = $('#settings-version');
       if (sv) sv.textContent = `v${info.version} · ${info.platform}`;
       const sv2 = $('#settings-version-2');
@@ -2396,7 +2396,7 @@ async function bootstrap() {
     flashToast(t('update_available') + ' v' + info.version);
   });
   cb.updater.onProgress((p) => {
-    if (p.percent > 0) flashToast(`⬇️ 下载中 ${p.percent.toFixed(0)}%`);
+    if (p.percent > 0) flashToast(t('toast_download_progress') + p.percent.toFixed(0) + '%');
   });
   cb.updater.onDownloaded((info) => {
     alertModal({ title: t('update_ready'), message: `v${info.version} ${t('update_ready')}`, confirmLabel: t('update_install') }).then(() => {
@@ -2404,7 +2404,7 @@ async function bootstrap() {
     });
   });
   cb.updater.onError((msg) => {
-    flashToast('⚠ 更新错误: ' + msg);
+    flashToast(t('toast_update_error') + msg);
   });
 }
 
