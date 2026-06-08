@@ -289,30 +289,42 @@ function createMainWindow() {
 
 // ====== 系统托盘 ======
 function createTray() {
-  // 托盘图标路径（src/renderer/ 在打包文件列表内）
-  const iconPath = path.join(__dirname, '../renderer/tray-icon.png');
-  const trayIcon = nativeImage.createFromPath(iconPath);
-  // macOS: 缩小到 16x16 适合托盘
-  const sizedIcon = process.platform === 'darwin' ? trayIcon.resize({ width: 16, height: 16 }) : trayIcon;
+  try {
+    // 托盘图标路径（src/renderer/ 在打包文件列表内）
+    const iconPath = path.join(__dirname, '../renderer/tray-icon.png');
+    let trayIcon = nativeImage.createFromPath(iconPath);
 
-  tray = new Tray(sizedIcon);
-  tray.setToolTip('Claude Board — AI 使用追踪');
+    if (trayIcon.isEmpty()) {
+      console.error('[tray] icon is empty, path:', iconPath);
+      // 回退：用 app 的 icon
+      trayIcon = nativeImage.createFromPath(path.join(__dirname, '../../build/icon.png'));
+    }
 
-  const contextMenu = Menu.buildFromTemplate([
-    { label: '📊 打开 Claude Board', click: () => showMainWindow() },
-    { type: 'separator' },
-    { label: '↻ 刷新数据', click: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tray:refresh'); } },
-    { type: 'separator' },
-    { label: '⚙️ 设置', click: () => { showMainWindow(); mainWindow?.webContents.executeJavaScript(`go('settings')`).catch(() => {}); } },
-    { type: 'separator' },
-    { label: '退出 Claude Board', click: () => { app.isQuitting = true; app.quit(); } },
-  ]);
-  tray.setContextMenu(contextMenu);
+    if (process.platform === 'darwin') {
+      // macOS: 必须设为 Template Image 才能在菜单栏正确显示（自动适配深色/浅色模式）
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+      trayIcon.setTemplateImage(true);
+    }
 
-  // macOS: 点击托盘图标显示窗口
-  tray.on('click', () => showMainWindow());
-  // Windows: 双击
-  tray.on('double-click', () => showMainWindow());
+    tray = new Tray(trayIcon);
+    tray.setToolTip('Claude Board — AI 使用追踪');
+
+    const contextMenu = Menu.buildFromTemplate([
+      { label: '打开 Claude Board', click: () => showMainWindow() },
+      { type: 'separator' },
+      { label: '刷新数据', click: () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('tray:refresh'); } },
+      { type: 'separator' },
+      { label: '设置', click: () => { showMainWindow(); mainWindow?.webContents.executeJavaScript(`go('settings')`).catch(() => {}); } },
+      { type: 'separator' },
+      { label: '退出', click: () => { app.isQuitting = true; app.quit(); } },
+    ]);
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => showMainWindow());
+    console.log('[tray] created, platform:', process.platform);
+  } catch (e) {
+    console.error('[tray] createTray failed:', e.message);
+  }
 }
 
 function showMainWindow() {
