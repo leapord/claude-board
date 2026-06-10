@@ -38,7 +38,7 @@ contextBridge.exposeInMainWorld('claudeBoard', {
     getProjects:     ()      => ipcRenderer.invoke('data:get-projects'),
     getModels:       ()      => ipcRenderer.invoke('data:get-models'),
     getTokens:       ()      => ipcRenderer.invoke('data:get-tokens'),
-    getHeatmap90d:   ()      => ipcRenderer.invoke('data:get-heatmap-90d'),
+    getHeatmapYearly:()      => ipcRenderer.invoke('data:get-heatmap-yearly'),
     getLevels:       ()      => ipcRenderer.invoke('data:get-levels'),
     getMeta:         ()      => ipcRenderer.invoke('data:get-meta'),
     rescan:          ()      => ipcRenderer.invoke('data:rescan'),

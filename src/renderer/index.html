@@ -14,12 +14,7 @@
     <div class="app">
       <!-- ===== Titlebar ===== -->
       <header class="titlebar">
-        <div class="titlebar__dots">
-          <div class="titlebar__dot dot-red"    data-win="close"      title="关闭"></div>
-          <div class="titlebar__dot dot-yellow" data-win="minimize"   title="最小化"></div>
-          <div class="titlebar__dot dot-green"  data-win="maximize"   title="最大化"></div>
-        </div>
-        <div class="titlebar__title">Claude Board — 跨平台 AI 使用追踪</div>
+        <div class="titlebar__title" data-i18n="titlebar_title">Claude Board — 跨平台 AI 使用追踪</div>
         <div class="titlebar__version" id="titlebar-version">v0.1 · 12 屏</div>
       </header>
 
@@ -32,41 +27,41 @@
         </div>
 
         <div class="sidebar__group">
-          <div class="sidebar__label">工作区</div>
-          <div class="nav-item active" data-route="overview"><span class="nav-item__icon">📊</span><span>概览</span></div>
-          <div class="nav-item" data-route="projects"><span class="nav-item__icon">📁</span><span>项目</span><span class="nav-item__badge" id="badge-projects">12</span></div>
-          <div class="nav-item" data-route="models"><span class="nav-item__icon">🤖</span><span>模型</span><span class="nav-item__badge" id="badge-models">5</span></div>
-          <div class="nav-item" data-route="tokens"><span class="nav-item__icon">💎</span><span>Token</span></div>
-          <div class="nav-item" data-route="levels"><span class="nav-item__icon">🏆</span><span>等级</span><span class="nav-item__badge nav-item__badge--hot" id="badge-levels">7/99</span></div>
-          <div class="nav-item" data-route="heatmap"><span class="nav-item__icon">🔥</span><span>热力图</span></div>
+          <div class="sidebar__label" data-i18n="nav_workstation">工作区</div>
+          <div class="nav-item active" data-route="overview"><span class="nav-item__icon">📊</span><span data-i18n="nav_overview">概览</span></div>
+          <div class="nav-item" data-route="projects"><span class="nav-item__icon">📁</span><span data-i18n="nav_projects">项目</span><span class="nav-item__badge" id="badge-projects">12</span></div>
+          <div class="nav-item" data-route="models"><span class="nav-item__icon">🤖</span><span data-i18n="nav_models">模型</span><span class="nav-item__badge" id="badge-models">5</span></div>
+          <div class="nav-item" data-route="tokens"><span class="nav-item__icon">💎</span><span data-i18n="nav_tokens">Token</span></div>
+          <div class="nav-item" data-route="levels"><span class="nav-item__icon">🏆</span><span data-i18n="nav_levels">等级</span><span class="nav-item__badge nav-item__badge--hot" id="badge-levels">7/50</span></div>
+          <div class="nav-item" data-route="heatmap"><span class="nav-item__icon">🔥</span><span data-i18n="nav_heatmap">热力图</span></div>
         </div>
 
         <div class="sidebar__group">
-          <div class="sidebar__label">配置</div>
-          <div class="nav-item" data-route="profiles"><span class="nav-item__icon">🔧</span><span>配置组</span><span class="nav-item__badge" id="badge-profiles">0</span></div>
+          <div class="sidebar__label" data-i18n="nav_config">配置</div>
+          <div class="nav-item" data-route="profiles"><span class="nav-item__icon">🔧</span><span data-i18n="nav_profiles">配置组</span><span class="nav-item__badge" id="badge-profiles">0</span></div>
         </div>
 
         <div class="sidebar__group">
-          <div class="sidebar__label">系统</div>
-          <div class="nav-item" data-route="settings"><span class="nav-item__icon">⚙️</span><span>设置</span></div>
+          <div class="sidebar__label" data-i18n="nav_system">系统</div>
+          <div class="nav-item" data-route="settings"><span class="nav-item__icon">⚙️</span><span data-i18n="nav_settings">设置</span></div>
         </div>
 
         <div class="sidebar__heatmap">
-          <div class="heatmap-mini__label"><span>活动热力图</span><span id="heatmap-365-count">365天 · 14</span></div>
+          <div class="heatmap-mini__label"><span data-i18n="sidebar_heatmap">活动热力图</span><span id="heatmap-365-count">365天 · 14</span></div>
           <div class="heatmap-mini" id="sidebar-heatmap"></div>
-          <div class="heatmap-mini__label" style="margin-top:6px;"><span>少</span><span>多</span></div>
+          <div class="heatmap-mini__label" style="margin-top:6px;"><span data-i18n="heatmap_less">少</span><span data-i18n="heatmap_more">多</span></div>
         </div>
       </aside>
 
       <!-- ===== Statusbar ===== -->
       <footer class="statusbar">
-        <div class="statusbar__item"><span class="statusbar__dot"></span><span id="sb-ready">已就绪</span></div>
-        <div class="statusbar__item">记录 <span id="sb-records">1,247</span></div>
-        <div class="statusbar__item">项目 <span id="sb-projects">12</span></div>
+        <div class="statusbar__item"><span class="statusbar__dot"></span><span id="sb-ready" data-i18n="sb_ready">已就绪</span></div>
+        <div class="statusbar__item"><span data-i18n="sb_records">记录</span> <span id="sb-records">1,247</span></div>
+        <div class="statusbar__item"><span data-i18n="sb_projects">项目</span> <span id="sb-projects">12</span></div>
         <div class="statusbar__item">Token <span id="sb-tokens">24M</span></div>
-        <div class="statusbar__item">等级 <span id="sb-level">Lv.7</span></div>
+        <div class="statusbar__item"><span data-i18n="sb_level">等级</span> <span id="sb-level">Lv.7</span></div>
         <div class="statusbar__right statusbar__item" id="sb-clock">--:--:--</div>
-        <div class="statusbar__right statusbar__item">v0.1 · 12 屏</div>
+        <div class="statusbar__right statusbar__item" data-i18n="statusbar_screens">v0.1 · 12 屏</div>
       </footer>
 
       <!-- ============================================================
@@ -74,55 +69,55 @@
            ============================================================ -->
       <main class="main active" id="page-overview">
         <div class="page-header">
-          <div class="page-header__title">概览</div>
-          <div class="page-header__sub">最近 7 天 ▾</div>
+          <div class="page-header__title" data-i18n="overview_title">概览</div>
+          <div class="page-header__sub" data-i18n="overview_recent7d">最近 7 天 ▾</div>
           <div class="page-header__actions">
-            <button class="btn" id="btn-refresh">↻ 刷新</button>
+            <button class="btn" id="btn-refresh" data-i18n="overview_refresh">↻ 刷新</button>
           </div>
         </div>
         <div class="grid grid--4 section" id="overview-stats"></div>
         <div class="grid grid--2 section" style="grid-template-columns: 1.4fr 1fr;">
           <div class="card">
-            <div class="card__header"><div class="card__title">活动趋势</div><div class="card__hint">最近 14 天</div></div>
+            <div class="card__header"><div class="card__title" data-i18n="overview_trend">活动趋势</div><div class="card__hint" data-i18n="overview_trend14d">最近 14 天</div></div>
             <div id="line-trend-chart"></div>
           </div>
           <div class="card">
-            <div class="card__header"><div class="card__title">模型分布</div><div class="card__hint">本周</div></div>
+            <div class="card__header"><div class="card__title" data-i18n="overview_model_dist">模型分布</div><div class="card__hint" data-i18n="overview_model_week">本周</div></div>
             <div id="pie-model-chart"></div>
           </div>
         </div>
         <div class="grid grid--2 section" style="grid-template-columns: 1.4fr 1fr;">
           <div class="card">
-            <div class="card__header"><div class="card__title">最近项目</div><div class="card__hint">点击启动</div></div>
+            <div class="card__header"><div class="card__title" data-i18n="overview_recent_projects">最近项目</div><div class="card__hint" data-i18n="overview_recent_click">点击启动</div></div>
             <div class="project-list" id="overview-projects"></div>
           </div>
           <div class="card">
-            <div class="card__header"><div class="card__title">最近活动</div><div class="card__hint">最近 10 条</div></div>
+            <div class="card__header"><div class="card__title" data-i18n="overview_recent_activities">最近活动</div><div class="card__hint" data-i18n="overview_recent10">最近 10 条</div></div>
             <div id="overview-activities"></div>
           </div>
           <div class="card heatmap-graph" style="grid-column:1/-1;">
             <div class="card__header">
-              <div class="card__title">🔥 活跃热力图</div>
-              <div class="card__hint">过去 365 天 · 点格子看详情</div>
+              <div class="card__title" data-i18n="overview_heatmap">🔥 活跃热力图</div>
+              <div class="card__hint" data-i18n="overview_heatmap_hint">年度活动 · 点格子看详情</div>
             </div>
             <div class="heatmap-graph__split">
               <div class="heatmap-graph__left" id="heatmap-grid"></div>
               <div class="heatmap-graph__right" id="heatmap-stats">
-                <div class="hstat"><div class="hstat__label">最高单日</div><div class="hstat__value" data-hs="maxDay">—</div></div>
-                <div class="hstat"><div class="hstat__label">当前连续</div><div class="hstat__value" data-hs="streak">—</div></div>
-                <div class="hstat"><div class="hstat__label">总活跃天</div><div class="hstat__value" data-hs="totalActive">—</div></div>
-                <div class="hstat"><div class="hstat__label">最近活动</div><div class="hstat__value" data-hs="lastActive">—</div></div>
-                <div class="hstat"><div class="hstat__label">30 天活跃</div><div class="hstat__value" data-hs="active30">—</div></div>
+                <div class="hstat"><div class="hstat__label" data-i18n="heatmap_max_day">最高单日</div><div class="hstat__value" data-hs="maxDay">—</div></div>
+                <div class="hstat"><div class="hstat__label" data-i18n="heatmap_streak">当前连续</div><div class="hstat__value" data-hs="streak">—</div></div>
+                <div class="hstat"><div class="hstat__label" data-i18n="heatmap_total_active">总活跃天</div><div class="hstat__value" data-hs="totalActive">—</div></div>
+                <div class="hstat"><div class="hstat__label" data-i18n="heatmap_last_active">最近活动</div><div class="hstat__value" data-hs="lastActive">—</div></div>
+                <div class="hstat"><div class="hstat__label" data-i18n="heatmap_active_30d">30 天活跃</div><div class="hstat__value" data-hs="active30">—</div></div>
               </div>
             </div>
             <div class="heatmap-graph__legend">
-              <span>少</span>
+              <span data-i18n="heatmap_less">少</span>
               <span class="heatmap-cell heatmap-cell--l0"></span>
               <span class="heatmap-cell heatmap-cell--l1"></span>
               <span class="heatmap-cell heatmap-cell--l2"></span>
               <span class="heatmap-cell heatmap-cell--l3"></span>
               <span class="heatmap-cell heatmap-cell--l4"></span>
-              <span>多</span>
+              <span data-i18n="heatmap_more">多</span>
             </div>
             <div class="heatmap-graph__tooltip" id="heatmap-tooltip" hidden></div>
           </div>
@@ -135,33 +130,33 @@
       <main class="main" id="page-projects">
         <div class="page-header">
           <div>
-            <div class="page-header__title">📁 项目管理 <span id="projects-count">(0)</span></div>
-            <div class="page-header__sub">配置 Claude Code 启动时进入的工作目录。</div>
+            <div class="page-header__title"><span data-i18n="projects_title">📁 项目管理</span> <span id="projects-count">(0)</span></div>
+            <div class="page-header__sub" data-i18n="projects_sub">配置 Claude Code 启动时进入的工作目录。</div>
           </div>
           <div class="page-header__actions">
-            <button class="btn btn--primary" id="btn-add-project">+ 添加项目</button>
+            <button class="btn btn--primary" id="btn-add-project" data-i18n="projects_add">+ 添加项目</button>
           </div>
         </div>
         <div class="toolbar">
-          <div class="search"><input id="projects-search" placeholder="搜索项目名或路径…" /></div>
+          <div class="search"><input id="projects-search" data-i18n-ph="projects_search" placeholder="搜索项目名或路径…" /></div>
           <div class="seg" id="projects-sort">
-            <button class="seg__btn active" data-sort="lastOpenedAt">最近打开</button>
-            <button class="seg__btn" data-sort="addedAt">添加时间</button>
-            <button class="seg__btn" data-sort="name">名称 A-Z</button>
+            <button class="seg__btn active" data-sort="lastOpenedAt" data-i18n="projects_sort_recent">最近打开</button>
+            <button class="seg__btn" data-sort="addedAt" data-i18n="projects_sort_added">添加时间</button>
+            <button class="seg__btn" data-sort="name" data-i18n="projects_sort_name">名称 A-Z</button>
           </div>
           <div class="seg" id="projects-view">
-            <button class="seg__btn active" data-view="card">▦ 卡片</button>
-            <button class="seg__btn" data-view="list">☰ 列表</button>
+            <button class="seg__btn active" data-view="card" data-i18n="projects_view_card">▦ 卡片</button>
+            <button class="seg__btn" data-view="list" data-i18n="projects_view_list">☰ 列表</button>
           </div>
         </div>
         <div class="project-list" id="project-list"></div>
         <div class="empty-state" id="projects-empty" hidden>
           <div class="empty-state__icon">📁</div>
-          <div class="empty-state__title">还没有项目</div>
-          <div class="empty-state__desc">添加你用 Claude Code 打开的工作目录，Claude Board 会自动追踪每个项目的 token 用量、对话数和成本。</div>
-          <div class="empty-state__hint">💡 概览屏的"最近项目"会显示这里添加的项目</div>
+          <div class="empty-state__title" data-i18n="projects_empty_title">还没有项目</div>
+          <div class="empty-state__desc" data-i18n="projects_empty_desc">添加你用 Claude Code 打开的工作目录，Claude Board 会自动追踪每个项目的 token 用量、对话数和成本。</div>
+          <div class="empty-state__hint" data-i18n="projects_empty_hint">💡 概览屏的"最近项目"会显示这里添加的项目</div>
           <br/>
-          <button class="btn btn--primary" id="btn-add-project-empty">+ 添加第一个项目</button>
+          <button class="btn btn--primary" id="btn-add-project-empty" data-i18n="projects_add_first">+ 添加第一个项目</button>
         </div>
       </main>
 
@@ -170,20 +165,20 @@
            ============================================================ -->
       <main class="main" id="page-models">
         <div class="page-header">
-          <div class="page-header__title">🤖 模型分布</div>
+          <div class="page-header__title" data-i18n="models_title">🤖 模型分布</div>
           <div class="page-header__actions">
-            <button class="btn">时段: 全部 ▾</button>
-            <button class="btn">币种: USD ▾</button>
+            <button class="btn" data-i18n="models_period">时段: 全部 ▾</button>
+            <button class="btn" data-i18n="models_currency">币种: USD ▾</button>
           </div>
         </div>
         <div class="grid grid--3 section" id="model-cards"></div>
         <div class="card section">
           <div class="card__header">
-            <div class="card__title">模型价格表（可编辑）</div>
-            <button class="btn btn--primary" style="margin-left:auto;">+ 添加自定义模型</button>
+            <div class="card__title" data-i18n="models_price_table">模型价格表（可编辑）</div>
+            <button class="btn btn--primary" style="margin-left:auto;" data-i18n="models_add_custom">+ 添加自定义模型</button>
           </div>
           <table class="price-table">
-            <thead><tr><th>模型</th><th>Input / 1M</th><th>Output / 1M</th><th>Cache 写 / 1M</th><th>Cache 读 / 1M</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="models_th_model">模型</th><th>Input / 1M</th><th>Output / 1M</th><th data-i18n="models_th_cw">Cache 写 / 1M</th><th data-i18n="models_th_cr">Cache 读 / 1M</th><th></th></tr></thead>
             <tbody id="price-tbody"></tbody>
           </table>
         </div>
@@ -193,33 +188,33 @@
            屏 4：Token
            ============================================================ -->
       <main class="main" id="page-tokens">
-        <div class="page-header"><div class="page-header__title">💎 Token 深度分析</div></div>
+        <div class="page-header"><div class="page-header__title" data-i18n="tokens_title">💎 Token 深度分析</div></div>
 
         <!-- 维度 1：总量 -->
         <div class="token-section">
-          <div class="token-section__title">📊 总量概览</div>
+          <div class="token-section__title" data-i18n="tokens_volume">📊 总量概览</div>
           <div class="token-overview" id="token-stats"></div>
           <div class="savings-banner" id="token-savings">
             <div class="savings-banner__icon">💰</div>
             <div class="savings-banner__text">
-              缓存命中率 <strong id="savings-hitrate">—</strong> · 节省成本 <strong id="savings-saved">—</strong>
+              <span data-i18n="token_savings_hitrate">缓存命中率</span> <strong id="savings-hitrate">—</strong> · <span data-i18n="token_savings_saved">节省成本</span> <strong id="savings-saved">—</strong>
             </div>
           </div>
         </div>
 
         <!-- 维度 2：Model × Token -->
         <div class="token-section">
-          <div class="token-section__title">🤖 Model × Token</div>
+          <div class="token-section__title" data-i18n="tokens_model">🤖 Model × Token</div>
           <div class="card">
             <div class="card__header">
-              <div class="card__title">各模型 Token 消耗明细</div>
-              <div class="card__hint">Input / Output / Cache Write / Cache Read</div>
+              <div class="card__title" data-i18n="token_model_detail">各模型 Token 消耗明细</div>
+              <div class="card__hint" data-i18n="token_io_hint">Input / Output / Cache Write / Cache Read</div>
             </div>
             <div class="token-table-wrap">
               <table class="token-table" id="token-model-table">
                 <thead>
                   <tr>
-                    <th>模型</th><th>Input</th><th>Output</th><th>Cache W</th><th>Cache R</th><th>Total</th><th>Cost</th>
+                    <th data-i18n="models_th_model">模型</th><th>Input</th><th>Output</th><th>Cache W</th><th>Cache R</th><th>Total</th><th>Cost</th>
                   </tr>
                 </thead>
                 <tbody id="token-model-tbody"></tbody>
@@ -231,18 +226,18 @@
 
         <!-- 维度 3：天 × Token -->
         <div class="token-section">
-          <div class="token-section__title">📅 天 × Token</div>
+          <div class="token-section__title" data-i18n="tokens_daily">📅 天 × Token</div>
           <div class="card">
             <div class="card__header">
-              <div class="card__title">每日 Token 消耗趋势</div>
-              <div class="card__hint">最近 30 天</div>
+              <div class="card__title" data-i18n="token_daily_title">每日 Token 消耗趋势</div>
+              <div class="card__hint" data-i18n="token_daily_hint">最近 30 天</div>
             </div>
             <div id="token-daily-chart" style="height:300px;"></div>
             <div class="token-table-wrap" style="margin-top:12px;">
               <table class="token-table" id="token-daily-table">
                 <thead>
                   <tr>
-                    <th>日期</th><th>对话数</th><th>Token</th><th>Cost</th>
+                    <th data-i18n="token_th_date">日期</th><th data-i18n="token_th_sessions">对话数</th><th>Token</th><th>Cost</th>
                   </tr>
                 </thead>
                 <tbody id="token-daily-tbody"></tbody>
@@ -253,9 +248,9 @@
 
         <!-- 桑基图 -->
         <div class="token-section">
-          <div class="token-section__title">🔀 Token 流向</div>
+          <div class="token-section__title" data-i18n="tokens_flow">🔀 Token 流向</div>
           <div class="card">
-            <div class="card__header"><div class="card__title">Input → Model → Output</div></div>
+            <div class="card__header"><div class="card__title" data-i18n="token_flow_title">Input → Model → Output</div></div>
             <div id="sankey-chart"></div>
           </div>
         </div>
@@ -265,7 +260,7 @@
            屏 5：等级
            ============================================================ -->
       <main class="main" id="page-levels">
-        <div class="page-header"><div class="page-header__title">🏆 我的等级</div><button class="page-header__help-btn" id="btn-level-help" title="查看升级规则">❓</button></div>
+        <div class="page-header"><div class="page-header__title" data-i18n="levels_title">🏆 我的等级</div><button class="page-header__help-btn" id="btn-level-help" data-i18n-title="levels_help_title" title="查看升级规则">❓</button></div>
         <div class="level-header">
           <div class="level-icon-wrap">
             <svg viewBox="0 0 64 64" fill="none">
@@ -290,24 +285,28 @@
             </div>
           </div>
           <div class="level-stats">
-            <div class="level-stats__row"><span>已解锁</span><span>7 / 99</span></div>
-            <div class="level-stats__row"><span>下一称号</span><span>📖 学者·学士</span></div>
-            <div class="level-stats__row"><span>总积分</span><span>8,340</span></div>
-            <div class="level-stats__row"><span>本月 +1,240</span><span style="color:var(--green);">↑ 17%</span></div>
+            <div class="level-stats__row"><span data-i18n="levels_unlocked">已解锁</span><span>7 / 50</span></div>
+            <div class="level-stats__row"><span data-i18n="levels_next">下一称号</span><span>📖 学者·学士</span></div>
+            <div class="level-stats__row"><span data-i18n="levels_total_score">总积分</span><span>8,340</span></div>
+            <div class="level-stats__row"><span data-i18n="levels_this_month">本月</span> <span>+1,240</span><span style="color:var(--green);">↑ 17%</span></div>
           </div>
         </div>
 
         <div class="level-section">
-          <div class="level-section__title">🌱 萌芽段 (L1-10) <span class="level-section__lock">✓ 已全部解锁</span></div>
+          <div class="level-section__title"><span data-i18n="levels_sprout_title">🌱 萌芽段 (L1-5)</span> <span class="level-section__lock" id="lock-sprout">✓ 已全部解锁</span></div>
           <div class="level-grid" id="level-grid-sprout"></div>
         </div>
         <div class="level-section">
-          <div class="level-section__title">📜 学者段 (L11-20) <span class="level-section__lock">Lv.7 已解锁 · 需 12,400 分达成 Lv.8</span></div>
+          <div class="level-section__title"><span data-i18n="levels_scholar_title">📜 学者段 (L6-10)</span> <span class="level-section__lock" id="lock-scholar">Lv.7 已解锁</span></div>
           <div class="level-grid" id="level-grid-scholar"></div>
         </div>
         <div class="level-section">
-          <div class="level-section__title">⚒️ 工匠段 (L21-35) <span class="level-section__lock">🔒 需 50,000 分</span></div>
-          <div style="color:var(--text-2);font-size:12px;padding:12px;background:var(--bg-2);border-radius:var(--radius);text-align:center;">🔒 解锁后将展示 5 个工匠主题图标</div>
+          <div class="level-section__title"><span data-i18n="levels_craftsman_title">⚒️ 工匠段 (L11-20)</span> <span class="level-section__lock" id="lock-craftsman">🔒 需 8,000 分</span></div>
+          <div class="level-grid" id="level-grid-craftsman"></div>
+        </div>
+        <div class="level-section">
+          <div class="level-section__title"><span data-i18n="levels_expert_title">🔬 专家段 (L21-50)</span> <span class="level-section__lock" id="lock-expert">🔒 需 30,000 分</span></div>
+          <div class="level-grid" id="level-grid-expert"></div>
         </div>
         <div class="max-level-preview">
           <svg class="max-level-preview__crown" viewBox="0 0 80 80" fill="none">
@@ -321,34 +320,34 @@
             <circle cx="60" cy="20" r="3" fill="#fef3c7"/>
             <rect x="10" y="60" width="60" height="3" fill="#fde68a"/>
           </svg>
-          <div style="font-size:24px;font-weight:700;color:var(--yellow);">👑 Lv.99 · AI 大牛</div>
-          <div style="color:var(--text-1);font-size:12px;margin-top:4px;">满级特殊奖励 · 旋转金冠 + 动态粒子 + 全息光环</div>
+          <div style="font-size:24px;font-weight:700;color:var(--yellow);" data-i18n="levels_max_unlocked">👑 Lv.50 · AI 大牛</div>
+          <div style="color:var(--text-1);font-size:12px;margin-top:4px;" data-i18n="levels_max_reward">满级特殊奖励 · 旋转金冠 + 动态粒子 + 全息光环</div>
         </div>
       </main>
 
       <!-- ============================================================
-           屏 6：90 天热力图
+           屏 6：年度热力图
            ============================================================ -->
       <main class="main" id="page-heatmap">
         <div class="page-header">
-          <div class="page-header__title">🔥 年度热力图</div>
-          <div class="page-header__sub" id="heatmap-90d-sub">2026 年活动分布</div>
+          <div class="page-header__title" data-i18n="heatmap_title">🔥 年度热力图</div>
+          <div class="page-header__sub" id="heatmap-yearly-sub">2026 年活动分布</div>
           <div class="page-header__actions">
-            <button class="btn" id="btn-heatmap-refresh">↻ 刷新</button>
+            <button class="btn" id="btn-heatmap-refresh" data-i18n="heatmap_refresh">↻ 刷新</button>
           </div>
         </div>
-        <div class="grid grid--4 section" id="heatmap-90d-stats"></div>
+        <div class="grid grid--4 section" id="heatmap-yearly-stats"></div>
         <div class="card section">
           <div class="card__header">
-            <div class="card__title">活动日历</div>
-            <div class="card__hint">每日活动强度 · 颜色越深越活跃</div>
+            <div class="card__title" data-i18n="heatmap_calendar">活动日历</div>
+            <div class="card__hint" data-i18n="heatmap_calendar_sub">每日活动强度 · 颜色越深越活跃</div>
           </div>
-          <div id="heatmap-90d-chart"></div>
+          <div id="heatmap-yearly-chart"></div>
         </div>
         <div class="card section">
           <div class="card__header">
-            <div class="card__title">📊 每日活动柱状图</div>
-            <div class="card__hint">过去 30 天</div>
+            <div class="card__title" data-i18n="heatmap_bar">📊 每日活动柱状图</div>
+            <div class="card__hint" data-i18n="heatmap_bar_sub">过去 30 天</div>
           </div>
           <div id="heatmap-30d-bar"></div>
         </div>
@@ -361,14 +360,14 @@
           <div class="onboarding" id="onboarding-card">
             <div class="onboarding__stepper" id="onboarding-stepper"></div>
             <div class="onboarding__emoji" id="onboarding-emoji">👋</div>
-            <div class="onboarding__title" id="onboarding-title">欢迎使用 Claude Board</div>
-            <div class="onboarding__sub" id="onboarding-sub">让我们用 4 步把它配置好</div>
+            <div class="onboarding__title" id="onboarding-title" data-i18n="ob_welcome_title">欢迎使用 Claude Board</div>
+            <div class="onboarding__sub" id="onboarding-sub" data-i18n="ob_welcome_sub">让我们用 4 步把它配置好</div>
             <div class="onboarding__body" id="onboarding-body"></div>
             <div class="onboarding__footer">
-              <button class="btn btn--ghost" id="onboarding-skip">跳过</button>
+              <button class="btn btn--ghost" id="onboarding-skip" data-i18n="ob_skip">跳过</button>
               <div>
-                <button class="btn" id="onboarding-prev" style="display:none;">← 上一步</button>
-                <button class="btn btn--primary" id="onboarding-next">下一步 →</button>
+                <button class="btn" id="onboarding-prev" style="display:none;" data-i18n="ob_prev">← 上一步</button>
+                <button class="btn btn--primary" id="onboarding-next" data-i18n="ob_next">下一步 →</button>
               </div>
             </div>
           </div>
@@ -381,19 +380,19 @@
       <main class="main" id="page-profiles">
         <div class="page-header">
           <div>
-            <div class="page-header__title">🔧 配置组</div>
-            <div class="page-header__sub">管理 Claude Code 的模型环境配置，一键切换不同供应商</div>
+            <div class="page-header__title" data-i18n="profiles_title">🔧 配置组</div>
+            <div class="page-header__sub" data-i18n="profiles_sub">管理 Claude Code 的模型环境配置，一键切换不同供应商</div>
           </div>
           <div class="page-header__actions">
-            <button class="btn btn--primary" id="btn-add-profile">+ 新建配置组</button>
+            <button class="btn btn--primary" id="btn-add-profile" data-i18n="profiles_add">+ 新建配置组</button>
           </div>
         </div>
 
         <!-- 当前生效配置 -->
         <div class="card section" id="profile-current-card">
           <div class="card__header">
-            <div class="card__title">🟢 当前生效配置</div>
-            <div class="card__hint">来自 ~/.claude/settings.json</div>
+            <div class="card__title" data-i18n="profiles_current">🟢 当前生效配置</div>
+            <div class="card__hint" data-i18n="profiles_current_sub">来自 ~/.claude/settings.json</div>
           </div>
           <div id="profile-current-env"></div>
         </div>
@@ -403,10 +402,10 @@
 
         <div class="empty-state" id="profiles-empty" hidden>
           <div class="empty-state__icon">🔧</div>
-          <div class="empty-state__title">还没有配置组</div>
-          <div class="empty-state__desc">配置组可以保存不同的 Claude Code API 供应商配置（Base URL、Token、模型名等），一键切换无需手动改环境变量。</div>
+          <div class="empty-state__title" data-i18n="profiles_empty_title">还没有配置组</div>
+          <div class="empty-state__desc" data-i18n="profiles_empty_desc">配置组可以保存不同的 Claude Code API 供应商配置（Base URL、Token、模型名等），一键切换无需手动改环境变量。</div>
           <br/>
-          <button class="btn btn--primary" id="btn-add-profile-empty">+ 创建第一个配置组</button>
+          <button class="btn btn--primary" id="btn-add-profile-empty" data-i18n="profiles_create_first">+ 创建第一个配置组</button>
         </div>
       </main>
 
@@ -414,7 +413,7 @@
            屏 8：设置
            ============================================================ -->
       <main class="main" id="page-settings">
-        <div class="page-header"><div class="page-header__title">⚙️ 设置</div></div>
+        <div class="page-header"><div class="page-header__title" data-i18n="nav_settings">⚙️ 设置</div></div>
         <div class="settings">
           <nav class="settings__nav" id="settings-nav"></nav>
           <div class="settings__panel" id="settings-panel"></div>
@@ -426,9 +425,9 @@
            ============================================================ -->
       <main class="main" id="page-terminal">
         <div class="page-header">
-          <div class="page-header__title">🖥️ 终端</div>
+          <div class="page-header__title" data-i18n="terminal_title">🖥️ 终端</div>
           <div class="page-header__actions">
-            <button class="btn" id="btn-terminal-restart" title="重启 shell 对话">↻ 重启</button>
+            <button class="btn" id="btn-terminal-restart" data-i18n-title="terminal_restart_title" title="重启 shell 对话" data-i18n="terminal_restart">↻ 重启</button>
           </div>
         </div>
         <div class="terminal-xterm" id="xterm-container"></div>
@@ -438,23 +437,23 @@
            屏 10：导出周报
            ============================================================ -->
       <main class="main" id="page-export">
-        <div class="page-header"><div class="page-header__title">📤 导出周报</div></div>
+        <div class="page-header"><div class="page-header__title" data-i18n="export_title">📤 导出周报</div></div>
         <div class="export">
           <div class="export__config">
             <div class="card">
-              <div class="card__header"><div class="card__title">时间范围</div></div>
+              <div class="card__header"><div class="card__title" data-i18n="export_time_range">时间范围</div></div>
               <div class="radio-group" id="export-range"></div>
             </div>
             <div class="card">
-              <div class="card__header"><div class="card__title">包含内容</div></div>
+              <div class="card__header"><div class="card__title" data-i18n="export_include_content">包含内容</div></div>
               <div id="export-includes"></div>
             </div>
             <div class="card">
-              <div class="card__header"><div class="card__title">导出格式</div></div>
+              <div class="card__header"><div class="card__title" data-i18n="export_format">导出格式</div></div>
               <div class="radio-group" id="export-formats"></div>
             </div>
-            <button class="btn btn--primary btn--lg" id="export-do">📥 导出报告</button>
-            <button class="btn" id="export-copy">📋 复制到剪贴板</button>
+            <button class="btn btn--primary btn--lg" id="export-do" data-i18n="export_do">📥 导出报告</button>
+            <button class="btn" id="export-copy" data-i18n="export_copy">📋 复制到剪贴板</button>
           </div>
           <div class="export__preview" id="export-preview"></div>
         </div>

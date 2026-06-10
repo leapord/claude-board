@@ -272,7 +272,7 @@ async function scan(opts = {}) {
     projects: { current: null, sessions: [] },
     models: { cards: [], prices: [] },
     tokens: { stats: [], savings: null, sankey: null },
-    heatmap: [], heatmap90dStats: [], levels: { current: { lv: 1, score: 0, target: 1240, streak: 0 } },
+    heatmap: [], heatmapYearlyStats: [], levels: { current: { lv: 1, score: 0, target: 1240, streak: 0 } },
   };
   const shaped = agg ? shapeForUI(agg, { ...opts, configuredProjects, modelPrices }) : empty;
   shaped.meta = {
@@ -320,10 +320,10 @@ function shapeForUI(agg, opts) {
     if (agg.dates.find(x => x.date === d.toISOString().slice(0,10))) streak++; else break;
   }
   const stats = [
-    { label: '今日对话', value: String(todayTurns), delta: `${todayTurns >= yesterdayTurns ? '↑' : '↓'} ${Math.abs(todayTurns-yesterdayTurns)} vs 昨天`, trend: todayTurns >= yesterdayTurns ? 'up' : 'down' },
-    { label: '本周 Cost', value: `$${weekCost.toFixed(2)}`, delta: '本周累计', trend: 'warn' },
-    { label: `活跃天数 🔥 ${streak}天连续`, value: `${weekActiveDays} / 7`, delta: `本周占比 ${Math.round(weekActiveDays/7*100)}%`, trend: 'up' },
-    { label: '本周 Token', value: weekTokens.toLocaleString(), delta: `缓存 ${(agg.totals.cr / Math.max(1, agg.totals.cr + agg.totals.in) * 100).toFixed(0)}%`, trend: 'up' },
+    { labelKey: 'overview_stat_today_turns', value: String(todayTurns), deltaKey: 'overview_stat_today_delta', deltaParams: { diff: Math.abs(todayTurns-yesterdayTurns), dir: todayTurns >= yesterdayTurns ? '↑' : '↓' }, trend: todayTurns >= yesterdayTurns ? 'up' : 'down' },
+    { labelKey: 'overview_stat_week_cost', value: `$${weekCost.toFixed(2)}`, deltaKey: 'overview_stat_week_cost_delta', trend: 'warn' },
+    { labelKey: 'overview_stat_active_days', labelParams: { streak }, value: `${weekActiveDays} / 7`, deltaKey: 'overview_stat_active_days_delta', deltaParams: { pct: Math.round(weekActiveDays/7*100) }, trend: 'up' },
+    { labelKey: 'overview_stat_week_tokens', value: weekTokens.toLocaleString(), deltaKey: 'overview_stat_week_tokens_delta', deltaParams: { rate: (agg.totals.cr / Math.max(1, agg.totals.cr + agg.totals.in) * 100).toFixed(0) }, trend: 'up' },
   ];
   // pie：显示所有真实模型
   const pieData = agg.models.map(m => ({ name: m.name, value: +(m.inTok/1e6 + m.outTok/1e6).toFixed(2) }));
@@ -394,20 +394,22 @@ function shapeForUI(agg, opts) {
     savings: { hitRate: `${agg.totals.cacheHit.toFixed(1)}%`, saved: `$${Math.round(savedAmount).toLocaleString()}` },
     sankey,
   };
-  // heatmap 365d（给概览屏内嵌 GitHub-style 网格用）
+  // heatmap：从今年 1 月 1 日到今天（确保年度热力图覆盖全年）
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const totalDays = Math.ceil((now - yearStart) / 86400000) + 1;
   const heatmap = [];
-  for (let i = 364; i >= 0; i--) {
-    const d = new Date(now); d.setDate(d.getDate() - i);
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(yearStart); d.setDate(d.getDate() + i);
     const key = d.toISOString().slice(0, 10);
     const rec = agg.dates.find(x => x.date === key);
     heatmap.push([key, rec ? (rec.sessions * 3 + (rec.tokens > 100000 ? Math.round(rec.tokens/50000) : 0)) : 0]);
   }
-  // 90d stat
-  const heatmap90dStats = [
-    { label: '总活跃天数', value: String(agg.dates.length), delta: '/ 90 天' },
-    { label: '最长连续', value: `${maxStreak(agg.dates)} 天 🔥`, delta: streak > 0 ? '当前连续中' : '已中断' },
-    { label: '日均启动', value: (agg.sessions.length / Math.max(1, agg.dates.length)).toFixed(1) + ' 次', delta: '—' },
-    { label: '本周活跃', value: `${weekActiveDays} / 7`, delta: `占比 ${Math.round(weekActiveDays/7*100)}%` },
+  // 年度统计卡片（供热力图页使用，具体数值由前端 yearData 实时计算，此处仅作兜底）
+  const heatmapYearlyStats = [
+    { labelKey: 'heatmap_total_active_days', value: String(agg.dates.length), delta: `/ ${Math.ceil((now - new Date(now.getFullYear(), 0, 1)) / 86400000)}` },
+    { labelKey: 'heatmap_current_streak', value: `${maxStreak(agg.dates)}`, delta: streak > 0 ? '🔥' : '—' },
+    { labelKey: 'heatmap_daily_avg', value: (agg.sessions.length / Math.max(1, agg.dates.length)).toFixed(1), delta: '—' },
+    { labelKey: 'heatmap_weekly_active', value: `${weekActiveDays} / 7`, delta: `${Math.round(weekActiveDays/7*100)}%` },
   ];
   // levels: 每 1240 分一级
   const sessionCount = (agg.sessions || []).length;
@@ -434,7 +436,7 @@ function shapeForUI(agg, opts) {
 },
     tokens,
     heatmap,
-    heatmap90dStats,
+    heatmapYearlyStats,
     levels,
   };
 }
@@ -451,13 +453,13 @@ function humanTime(iso) {
   if (isNaN(d)) return '—';
   const diff = Date.now() - d.getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return '刚刚';
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return 'human_just_now';
+  if (m < 60) return `human_minutes_ago:${m}`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return `human_hours_ago:${h}`;
   const days = Math.floor(h / 24);
-  if (days === 1) return '昨天';
-  if (days < 7) return `${days}天前`;
+  if (days === 1) return 'human_yesterday';
+  if (days < 7) return `human_days_ago:${days}`;
   return d.toISOString().slice(0, 10);
 }
 function maxStreak(dates) {

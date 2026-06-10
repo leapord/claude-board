@@ -69,6 +69,41 @@ const chartInstances = new Map();
 const I18N = window.ClaudeBoardI18n || { LOCALES: { 'zh-CN': {}, 'en-US': {} }, t: (k) => k, setLocale: () => {}, currentLocale: 'zh-CN' };
 function t(key) { return I18N.t(key); }
 function setLocale(locale) { I18N.setLocale(locale); }
+// 参数化翻译：t('key', { param: value }) → 将 {param} 替换为 value
+function tp(key, params) {
+  let s = t(key);
+  if (params) Object.entries(params).forEach(([k, v]) => { s = s.replace(new RegExp(`\\{${k}\\}`, 'g'), v); });
+  return s;
+}
+
+// 翻译 scanner 返回的时间 key（如 "human_just_now" 或 "human_days_ago:3"）
+function translateTime(key) {
+  if (!key || key === '—') return '—';
+  if (key.includes(':')) {
+    const [k, v] = key.split(':');
+    return tp(k, { n: v });
+  }
+  return t(key);
+}
+
+// ====== applyI18n：将 t() 应用到所有 data-i18n 属性的静态元素 ======
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (val !== key) el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    const val = t(key);
+    if (val !== key) el.placeholder = val;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title');
+    const val = t(key);
+    if (val !== key) el.title = val;
+  });
+}
 
 // ====== Theme（暗色/亮色/跟随系统）======
 function getSystemTheme() { return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
@@ -278,10 +313,23 @@ function renderSettings() {
   $('#sel-language')?.addEventListener('change',   async (e) => {
     await setSetting({ language: e.target.value });
     setLocale(e.target.value);
-    // 强制重新渲染设置导航（清除 rendered 标记以刷新 i18n 标签）
-    const nav = $('#settings-nav');
-    if (nav) delete nav.dataset.rendered;
-    renderSettings();
+    applyI18n();
+    // 强制重新渲染：清除所有页面和子组件的 rendered 标记
+    document.querySelectorAll('.main[id]').forEach(p => delete p.dataset.rendered);
+    const settingsNav = $('#settings-nav');
+    if (settingsNav) delete settingsNav.dataset.rendered;
+    // 重新渲染当前路由
+    const r = State.currentRoute;
+    if (r === 'overview') await renderOverview();
+    else if (r === 'projects') await renderProjects();
+    else if (r === 'models') await renderModels();
+    else if (r === 'tokens') await renderTokens();
+    else if (r === 'levels') await renderLevels();
+    else if (r === 'heatmap') await renderHeatmapYearly();
+    else if (r === 'profiles') await renderProfiles();
+    else if (r === 'settings') renderSettings();
+    else if (r === 'export') renderExport();
+    refreshSidebarHeatmap().catch(() => {});
     flashToast(t('toast_language_switched'));
   });
   // 外观 tab
@@ -419,7 +467,7 @@ function onEnter(route) {
     case 'models':    renderModels(); break;
     case 'tokens':    renderTokens(); break;
     case 'levels':    renderLevels(); break;
-    case 'heatmap':   renderHeatmap90d(); break;
+    case 'heatmap':   renderHeatmapYearly(); break;
     case 'profiles':  renderProfiles(); break;
     case 'settings':  renderSettings(); break;
     case 'design-system': renderDesignSystem(); break;
@@ -459,24 +507,13 @@ function updateSidebarBadges({ projectCount, modelCount, levelStr }) {
 }
 
 // ============================================================
-// Titlebar 窗口控制（真 IPC）
-// ============================================================
-$$('.titlebar__dot').forEach(d => {
-  d.addEventListener('click', () => {
-    const a = d.dataset.win;
-    if (a === 'close')      cb.window.close();
-    else if (a === 'minimize') cb.window.minimize();
-    else if (a === 'maximize') cb.window.toggleMaximize();
-  });
-});
-
 // ============================================================
 // 侧边栏热力图（来自真数据）
 // ============================================================
 async function refreshSidebarHeatmap() {
   const wrap = $('#sidebar-heatmap');
   if (!wrap) return;
-  const d = await cb.data.getHeatmap90d();
+  const d = await cb.data.getHeatmapYearly();
   const heatmap = d?.heatmap || [];
   // 取最近 105 天 → 15×7
   const cells = heatmap.slice(-105).map(([_, v]) => {
@@ -538,7 +575,7 @@ function startAutoScan() {
       // 静默刷新当前路由（不弹 toast）
       const r = State.currentRoute;
       if (r === 'overview') renderOverview();
-      else if (r === 'heatmap') renderHeatmap90d();
+      else if (r === 'heatmap') renderHeatmapYearly();
       refreshSidebarHeatmap().catch(() => {});
       console.log('[autoScan] rescan done');
     } catch (e) {
@@ -732,13 +769,16 @@ async function renderOverview() {
   // 4 stat cards
   const stats = $('#overview-stats');
   if (stats) {
-    stats.innerHTML = (d.stats || []).map(s => `
+    stats.innerHTML = (d.stats || []).map(s => {
+      const label = s.labelKey ? tp(s.labelKey, s.labelParams) : (s.label || '');
+      const delta = s.deltaKey ? tp(s.deltaKey, s.deltaParams) : (s.delta || '—');
+      return `
       <div class="card stat-card">
-        <div class="stat-card__label">${esc(s.label)}</div>
+        <div class="stat-card__label">${esc(label)}</div>
         <div class="stat-card__value">${esc(s.value)}</div>
-        <div class="stat-card__delta stat-card__delta--${esc(s.trend)}">${esc(s.delta)}</div>
-      </div>
-    `).join('');
+        <div class="stat-card__delta stat-card__delta--${esc(s.trend)}">${esc(delta)}</div>
+      </div>`;
+    }).join('');
   }
   // Line chart
   const line = getOrInitChart('line-trend-chart');
@@ -827,7 +867,7 @@ async function renderOverview() {
         <div class="activity-item">
           <span class="activity-item__name">${esc(a.name)}</span>
           <span class="activity-item__path">${esc(a.path)}</span>
-          <span class="activity-item__time">${esc(a.time)}</span>
+          <span class="activity-item__time">${esc(translateTime(a.time))}</span>
         </div>
       `).join('');
     }
@@ -847,9 +887,9 @@ async function renderOverview() {
   updateSidebarBadges({
     projectCount: (d.recentProjects || []).length,
     modelCount:    (d.pieData || []).length,
-    levelStr:      levels?.current ? `${levels.current.lv}/99` : null,
+    levelStr:      levels?.current ? `${levels.current.lv}/50` : null,
   });
-  // 概览屏内嵌热力图（GitHub-style 53×7 网格，365 天）
+  // 概览屏内嵌热力图（GitHub-style 年度活动网格）
   renderOverviewHeatmap();
 }
 
@@ -1559,7 +1599,7 @@ async function renderLevels() {
     hero.querySelector('.level-info__lv').textContent = `Lv.${c.lv}`;
     // 更新称号
     const titleEl = hero.querySelector('.level-info__title');
-    if (titleEl) titleEl.textContent = LEVEL_TITLES[Math.min(c.lv, LEVEL_TITLES.length) - 1] || `Lv.${c.lv}`;
+    if (titleEl) titleEl.textContent = getLevelTitle(Math.min(c.lv, LEVEL_TITLE_KEYS.length) - 1) || `Lv.${c.lv}`;
     const fill = hero.querySelector('.level-info__progress-fill');
     if (fill) fill.style.width = `${Math.min(100, (c.score / c.target) * 100).toFixed(1)}%`;
     const text = hero.querySelector('.level-info__progress-text');
@@ -1570,24 +1610,32 @@ async function renderLevels() {
   }
   const stats = $('.level-stats');
   if (stats) {
-    stats.children[0].children[1].textContent = `${c.lv} / 99`;
-    stats.children[1].children[1].textContent = LEVEL_TITLES[Math.min(c.lv, LEVEL_TITLES.length)] || `Lv.${c.lv + 1}`;
+    stats.children[0].children[1].textContent = `${c.lv} / 50`;
+    stats.children[1].children[1].textContent = getLevelTitle(Math.min(c.lv, LEVEL_TITLE_KEYS.length)) || `Lv.${c.lv + 1}`;
     stats.children[2].children[1].textContent = c.score.toLocaleString();
     stats.children[3].children[1].textContent = c.streak > 0 ? t('levels_active_streak') + c.streak + t('levels_active_days') : '—';
   }
   // 动态渲染段位卡（基于真实等级）
-  const sprout = $('#level-grid-sprout');
-  if (sprout) {
-    sprout.innerHTML = generateLevelCards(1, 5, c.lv);
+  const grids = [
+    { id: 'level-grid-sprout',   from: 1,  to: 5,   lockId: 'lock-sprout',   unlockLv: 5,  needScore: 0 },
+    { id: 'level-grid-scholar',  from: 6,  to: 10,  lockId: 'lock-scholar',  unlockLv: 10, needScore: 3000 },
+    { id: 'level-grid-craftsman',from: 11, to: 20,  lockId: 'lock-craftsman',unlockLv: 20, needScore: 8000 },
+    { id: 'level-grid-expert',   from: 21, to: 50,  lockId: 'lock-expert',   unlockLv: 50, needScore: 30000 },
+  ];
+  for (const g of grids) {
+    const el = $(`#${g.id}`);
+    if (el) el.innerHTML = generateLevelCards(g.from, g.to, c.lv);
+    const lockEl = $(`#${g.lockId}`);
+    if (lockEl) {
+      if (c.lv >= g.to) lockEl.textContent = `✓ ${t('levels_unlocked')}`;
+      else if (c.lv >= g.from) lockEl.textContent = `Lv.${c.lv} ${t("levels_unlocked")} · ${t("levels_need")} ${c.target.toLocaleString()} ${t("levels_points")} → Lv.${c.lv + 1}`;
+      else lockEl.textContent = `🔒 ${t('levels_need')} ${g.needScore.toLocaleString()} ${t("levels_points")}`;
+    }
   }
-  const scholar = $('#level-grid-scholar');
-  if (scholar) {
-    scholar.innerHTML = generateLevelCards(6, 10, c.lv);
-  }
-  // Lv.99 AI 大牛预览：未达 99 级时灰显
+  // Lv.50 满级预览：未达 50 级时灰显
   const maxPreview = document.querySelector('.max-level-preview');
   if (maxPreview) {
-    const isMax = c.lv >= 99;
+    const isMax = c.lv >= 50;
     maxPreview.classList.toggle('max-level-preview--locked', !isMax);
     const titleEl = maxPreview.querySelector('div[style*="font-size:24px"]');
     if (titleEl) {
@@ -1597,22 +1645,7 @@ async function renderLevels() {
     if (descEl) {
       descEl.textContent = isMax
         ? t('levels_max_reward')
-        : `${t("levels_max_need")} ${Math.max(0, (99 * 1240 - c.score)).toLocaleString()} ${t("levels_points")}`;
-    }
-  }
-  // 更新段位标题
-  const sproutTitle = sprout?.previousElementSibling;
-  if (sproutTitle) {
-    const lock = sproutTitle.querySelector('.level-section__lock');
-    if (lock) lock.textContent = c.lv >= 5 ? t('levels_unlocked') : `${t("levels_unlocked")} Lv.1-${c.lv}`;
-  }
-  const scholarTitle = scholar?.previousElementSibling;
-  if (scholarTitle) {
-    const lock = scholarTitle.querySelector('.level-section__lock');
-    if (lock) {
-      if (c.lv >= 10) lock.textContent = t('levels_unlocked');
-      else if (c.lv >= 6) lock.textContent = `Lv.${c.lv} ${t("levels_unlocked")} · ${t("levels_need")} ${c.target.toLocaleString()} ${t("levels_points")} → Lv.${c.lv + 1}`;
-      else lock.textContent = `🔒 ${t('levels_need')} 6,200 ${t('levels_points')}`;
+        : `${t("levels_max_need")} ${Math.max(0, (50 * 1240 - c.score)).toLocaleString()} ${t("levels_points")}`;
     }
   }
 }
@@ -1631,17 +1664,23 @@ $('#btn-level-help')?.addEventListener('click', () => {
       t('levels_help_scholar') + '\n' +
       t('levels_help_craftsman') + '\n' +
       t('levels_help_expert') + '\n' +
-      t('levels_help_master') + '\n' +
       t('levels_help_max'),
     confirmLabel: t('levels_help_got_it'),
   });
 });
 
-// 等级名称表（1-10）
-const LEVEL_TITLES = [
-  '🌱 嫩芽', '🌿 幼苗', '🍀 三叶', '🌳 小树', '🌲 大树',
-  '📜 竹简', '📖 翻书', '🎓 学士', '🧑‍🎓 硕士', '👨‍🏫 博士',
+// 等级名称表（1-20）— 使用 i18n key，通过 t() 翻译
+const LEVEL_TITLE_KEYS = [
+  'lv_sprout', 'lv_seedling', 'lv_clover', 'lv_small_tree', 'lv_big_tree',
+  'lv_bamboo', 'lv_book', 'lv_bachelor', 'lv_master', 'lv_doctor',
+  'lv_hammer', 'lv_wrench', 'lv_gear', 'lv_saw', 'lv_brush',
+  'lv_ruler', 'lv_screwdriver', 'lv_shield', 'lv_gem', 'lv_crown20',
 ];
+function getLevelTitle(idx) {
+  const key = LEVEL_TITLE_KEYS[idx];
+  if (key) { const v = t(key); return v !== key ? v : `Lv.${idx + 1}`; }
+  return `Lv.${idx + 1}`;
+}
 // 每个等级的 SVG 图标（简化版）
 const LEVEL_ICONS = [
   // Lv.1 嫩芽
@@ -1664,6 +1703,87 @@ const LEVEL_ICONS = [
   '<svg viewBox="0 0 48 48" fill="none"><path d="M24 8 L24 18 M14 14 L34 14" stroke="#5b9dff" stroke-width="2"/><path d="M8 18 L40 18 L36 32 L12 32 Z" fill="#5b9dff" opacity="0.3"/><circle cx="24" cy="36" r="2" fill="#5b9dff"/></svg>',
   // Lv.10 博士
   '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="18" r="8" fill="none" stroke="#5b9dff" stroke-width="2"/><path d="M12 38 C12 30 18 26 24 26 C30 26 36 30 36 38" fill="#5b9dff" opacity="0.3"/><rect x="20" y="14" width="8" height="4" fill="#5b9dff" opacity="0.4"/></svg>',
+  // Lv.11 锤子
+  '<svg viewBox="0 0 48 48" fill="none"><rect x="20" y="8" width="8" height="20" rx="2" fill="#f59e0b" opacity="0.8"/><rect x="14" y="4" width="20" height="10" rx="3" fill="#f59e0b"/><rect x="22" y="28" width="4" height="14" fill="#92400e"/></svg>',
+  // Lv.12 扳手
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M10 38 L30 18" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/><circle cx="34" cy="14" r="8" fill="none" stroke="#f59e0b" stroke-width="3"/><circle cx="34" cy="14" r="3" fill="#f59e0b" opacity="0.5"/></svg>',
+  // Lv.13 齿轮
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="8" fill="none" stroke="#f59e0b" stroke-width="2.5"/><circle cx="24" cy="24" r="3" fill="#f59e0b"/><path d="M24 4 L27 10 L21 10 Z M24 44 L21 38 L27 38 Z M4 24 L10 21 L10 27 Z M44 24 L38 27 L38 21 Z M9 9 L14 12 L11 15 Z M39 39 L34 36 L37 33 Z M9 39 L12 34 L15 37 Z M39 9 L36 14 L33 11 Z" fill="#f59e0b"/></svg>',
+  // Lv.14 锯子
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M8 30 L40 30" stroke="#f59e0b" stroke-width="3"/><path d="M8 30 L8 20 L40 20 L40 30" fill="#f59e0b" opacity="0.3"/><path d="M12 20 L12 16 M16 20 L16 14 M20 20 L20 16 M24 20 L24 14 M28 20 L28 16 M32 20 L32 14 M36 20 L36 16" stroke="#f59e0b" stroke-width="1.5"/></svg>',
+  // Lv.15 画笔
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M36 8 L14 30 L10 38 L18 34 L40 12 Z" fill="#f59e0b" opacity="0.4"/><path d="M36 8 L40 12 L38 14 L34 10 Z" fill="#f59e0b"/><path d="M14 30 L10 38 L18 34 Z" fill="#f59e0b" opacity="0.8"/></svg>',
+  // Lv.16 尺子
+  '<svg viewBox="0 0 48 48" fill="none"><rect x="6" y="18" width="36" height="12" rx="2" fill="#f59e0b" opacity="0.3"/><path d="M10 18 L10 24 M16 18 L16 22 M22 18 L22 24 M28 18 L28 22 M34 18 L34 24" stroke="#f59e0b" stroke-width="1.5"/></svg>',
+  // Lv.17 螺丝刀
+  '<svg viewBox="0 0 48 48" fill="none"><rect x="22" y="6" width="4" height="24" rx="1" fill="#f59e0b" opacity="0.6"/><path d="M20 30 L28 30 L26 42 L22 42 Z" fill="#f59e0b"/><rect x="22" y="6" width="4" height="4" fill="#f59e0b"/></svg>',
+  // Lv.18 盾牌
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 6 L40 14 L40 28 C40 36 32 42 24 44 C16 42 8 36 8 28 L8 14 Z" fill="#f59e0b" opacity="0.3"/><path d="M24 6 L40 14 L40 28 C40 36 32 42 24 44 C16 42 8 36 8 28 L8 14 Z" fill="none" stroke="#f59e0b" stroke-width="2"/><path d="M20 24 L24 28 L30 18" stroke="#f59e0b" stroke-width="2.5" fill="none"/></svg>',
+  // Lv.19 宝石
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 8 L36 18 L30 40 L18 40 L12 18 Z" fill="#f59e0b" opacity="0.3"/><path d="M24 8 L36 18 L30 40 L18 40 L12 18 Z" fill="none" stroke="#f59e0b" stroke-width="2"/><path d="M12 18 L36 18 M24 8 L18 18 M24 8 L30 18 M18 18 L30 40 M30 18 L18 40" stroke="#f59e0b" stroke-width="1" opacity="0.5"/></svg>',
+  // Lv.20 王冠
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M8 34 L12 16 L20 26 L24 10 L28 26 L36 16 L40 34 Z" fill="#f59e0b"/><rect x="8" y="34" width="32" height="6" fill="#f59e0b" opacity="0.8"/><circle cx="12" cy="16" r="2" fill="#fef3c7"/><circle cx="24" cy="10" r="2" fill="#fef3c7"/><circle cx="36" cy="16" r="2" fill="#fef3c7"/></svg>',
+  // === 专家段 L21-50（紫色主题 #a855f7）===
+  // Lv.21 望远镜
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M10 36 L24 22 L28 26 L14 40 Z" fill="#a855f7" opacity="0.3"/><circle cx="32" cy="16" r="10" fill="none" stroke="#a855f7" stroke-width="2"/><circle cx="32" cy="16" r="5" fill="#a855f7" opacity="0.2"/><path d="M24 22 L36 10" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/><rect x="6" y="38" width="12" height="4" rx="2" fill="#a855f7" opacity="0.6"/></svg>',
+  // Lv.22 显微镜
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="20" cy="14" r="8" fill="none" stroke="#a855f7" stroke-width="2"/><circle cx="20" cy="14" r="3" fill="#a855f7" opacity="0.3"/><path d="M20 22 L20 34" stroke="#a855f7" stroke-width="3"/><path d="M12 34 L28 34" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/><path d="M16 34 L16 42" stroke="#a855f7" stroke-width="2"/><path d="M24 34 L24 42" stroke="#a855f7" stroke-width="2"/><rect x="10" y="42" width="20" height="3" rx="1.5" fill="#a855f7" opacity="0.5"/><circle cx="36" cy="10" r="4" fill="#a855f7" opacity="0.15"/></svg>',
+  // Lv.23 原子
+  '<svg viewBox="0 0 48 48" fill="none"><ellipse cx="24" cy="24" rx="18" ry="7" fill="none" stroke="#a855f7" stroke-width="1.5" transform="rotate(0 24 24)"/><ellipse cx="24" cy="24" rx="18" ry="7" fill="none" stroke="#a855f7" stroke-width="1.5" transform="rotate(60 24 24)"/><ellipse cx="24" cy="24" rx="18" ry="7" fill="none" stroke="#a855f7" stroke-width="1.5" transform="rotate(120 24 24)"/><circle cx="24" cy="24" r="3.5" fill="#a855f7"/></svg>',
+  // Lv.24 DNA
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M16 6 C16 6 32 14 32 24 C32 34 16 42 16 42" stroke="#a855f7" stroke-width="2" fill="none"/><path d="M32 6 C32 6 16 14 16 24 C16 34 32 42 32 42" stroke="#a855f7" stroke-width="2" fill="none"/><line x1="18" y1="12" x2="30" y2="12" stroke="#a855f7" stroke-width="1.5" opacity="0.6"/><line x1="17" y1="18" x2="31" y2="18" stroke="#a855f7" stroke-width="1.5" opacity="0.6"/><line x1="18" y1="24" x2="30" y2="24" stroke="#a855f7" stroke-width="1.5" opacity="0.6"/><line x1="17" y1="30" x2="31" y2="30" stroke="#a855f7" stroke-width="1.5" opacity="0.6"/><line x1="18" y1="36" x2="30" y2="36" stroke="#a855f7" stroke-width="1.5" opacity="0.6"/></svg>',
+  // Lv.25 卫星
+  '<svg viewBox="0 0 48 48" fill="none"><rect x="18" y="18" width="12" height="12" rx="2" fill="#a855f7" opacity="0.3" stroke="#a855f7" stroke-width="1.5"/><rect x="4" y="20" width="12" height="8" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1"/><rect x="32" y="20" width="12" height="8" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1"/><line x1="16" y1="24" x2="4" y2="24" stroke="#a855f7" stroke-width="1"/><line x1="32" y1="24" x2="44" y2="24" stroke="#a855f7" stroke-width="1"/><circle cx="24" cy="24" r="2" fill="#a855f7"/><path d="M38 8 C38 8 42 12 40 16" stroke="#a855f7" stroke-width="1" opacity="0.4"/></svg>',
+  // Lv.26 火箭
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 4 C24 4 32 12 32 28 L28 36 L20 36 L16 28 C16 12 24 4 24 4 Z" fill="#a855f7" opacity="0.25" stroke="#a855f7" stroke-width="1.5"/><circle cx="24" cy="18" r="3" fill="#a855f7" opacity="0.5"/><path d="M16 28 L10 34 L14 36" fill="#a855f7" opacity="0.4"/><path d="M32 28 L38 34 L34 36" fill="#a855f7" opacity="0.4"/><path d="M20 36 L22 44 L24 38 L26 44 L28 36" fill="#a855f7" opacity="0.6"/></svg>',
+  // Lv.27 地球仪
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="16" fill="none" stroke="#a855f7" stroke-width="1.5"/><ellipse cx="24" cy="24" rx="8" ry="16" fill="none" stroke="#a855f7" stroke-width="1"/><path d="M8 24 L40 24" stroke="#a855f7" stroke-width="1"/><path d="M10 16 L38 16" stroke="#a855f7" stroke-width="0.8" opacity="0.5"/><path d="M10 32 L38 32" stroke="#a855f7" stroke-width="0.8" opacity="0.5"/><path d="M24 8 L24 40" stroke="#a855f7" stroke-width="0.5" opacity="0.3"/></svg>',
+  // Lv.28 指南针
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="17" fill="none" stroke="#a855f7" stroke-width="1.5"/><circle cx="24" cy="24" r="14" fill="none" stroke="#a855f7" stroke-width="0.5" opacity="0.3"/><polygon points="24,10 27,24 24,28 21,24" fill="#a855f7" opacity="0.7"/><polygon points="24,38 21,24 24,20 27,24" fill="#a855f7" opacity="0.3"/><circle cx="24" cy="24" r="2" fill="#a855f7"/><text x="24" y="9" text-anchor="middle" font-size="5" fill="#a855f7" font-weight="bold">N</text></svg>',
+  // Lv.29 闪电
+  '<svg viewBox="0 0 48 48" fill="none"><polygon points="28,4 14,24 22,24 18,44 36,20 26,20" fill="#a855f7" opacity="0.35"/><polygon points="28,4 14,24 22,24 18,44 36,20 26,20" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  // Lv.30 水晶球
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="22" r="14" fill="#a855f7" opacity="0.1"/><circle cx="24" cy="22" r="14" fill="none" stroke="#a855f7" stroke-width="1.5"/><path d="M16 18 C18 14 22 12 28 14" stroke="#a855f7" stroke-width="1" opacity="0.4"/><path d="M14 26 C18 22 26 20 34 24" stroke="#a855f7" stroke-width="0.8" opacity="0.3"/><ellipse cx="20" cy="16" rx="3" ry="2" fill="#a855f7" opacity="0.15"/><rect x="18" y="36" width="12" height="4" rx="2" fill="#a855f7" opacity="0.4"/><path d="M14 36 L34 36" stroke="#a855f7" stroke-width="1.5"/></svg>',
+  // Lv.31 烧杯
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M16 8 L16 20 L8 38 C6 42 10 44 14 42 L34 42 C38 44 42 42 40 38 L32 20 L32 8" fill="#a855f7" opacity="0.12" stroke="#a855f7" stroke-width="1.5"/><line x1="14" y1="8" x2="34" y2="8" stroke="#a855f7" stroke-width="2"/><path d="M12 32 L36 32" stroke="#a855f7" stroke-width="0.8" opacity="0.3"/><circle cx="20" cy="36" r="2" fill="#a855f7" opacity="0.3"/><circle cx="28" cy="34" r="1.5" fill="#a855f7" opacity="0.3"/></svg>',
+  // Lv.32 大脑
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 8 C16 8 10 14 10 22 C10 28 14 32 18 34 C16 36 16 40 20 42 L24 42 L28 42 C32 40 32 36 30 34 C34 32 38 28 38 22 C38 14 32 8 24 8 Z" fill="#a855f7" opacity="0.15" stroke="#a855f7" stroke-width="1.5"/><path d="M24 12 L24 38" stroke="#a855f7" stroke-width="1" opacity="0.4"/><path d="M16 20 C18 18 22 20 24 18" stroke="#a855f7" stroke-width="1" opacity="0.3"/><path d="M32 20 C30 18 26 20 24 18" stroke="#a855f7" stroke-width="1" opacity="0.3"/></svg>',
+  // Lv.33 眼睛
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M4 24 C4 24 12 12 24 12 C36 12 44 24 44 24 C44 24 36 36 24 36 C12 36 4 24 4 24 Z" fill="#a855f7" opacity="0.1" stroke="#a855f7" stroke-width="1.5"/><circle cx="24" cy="24" r="8" fill="none" stroke="#a855f7" stroke-width="1.5"/><circle cx="24" cy="24" r="4" fill="#a855f7" opacity="0.5"/><circle cx="22" cy="22" r="1.5" fill="white" opacity="0.6"/></svg>',
+  // Lv.34 太阳
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="8" fill="#a855f7" opacity="0.3"/><circle cx="24" cy="24" r="8" fill="none" stroke="#a855f7" stroke-width="1.5"/><line x1="24" y1="4" x2="24" y2="12" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><line x1="24" y1="36" x2="24" y2="44" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><line x1="4" y1="24" x2="12" y2="24" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><line x1="36" y1="24" x2="44" y2="24" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><line x1="10" y1="10" x2="16" y2="16" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/><line x1="32" y1="32" x2="38" y2="38" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/><line x1="38" y1="10" x2="32" y2="16" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="32" x2="10" y2="38" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  // Lv.35 月亮
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M30 8 C20 8 12 16 12 26 C12 36 20 44 30 44 C22 40 18 32 18 24 C18 16 22 10 30 8 Z" fill="#a855f7" opacity="0.4"/><circle cx="34" cy="14" r="1.5" fill="#a855f7" opacity="0.3"/><circle cx="38" cy="22" r="1" fill="#a855f7" opacity="0.3"/><circle cx="36" cy="32" r="1.5" fill="#a855f7" opacity="0.2"/></svg>',
+  // Lv.36 星星
+  '<svg viewBox="0 0 48 48" fill="none"><polygon points="24,4 28,18 42,18 31,26 35,40 24,32 13,40 17,26 6,18 20,18" fill="#a855f7" opacity="0.25" stroke="#a855f7" stroke-width="1.5" stroke-linejoin="round"/></svg>',
+  // Lv.37 山峰
+  '<svg viewBox="0 0 48 48" fill="none"><polygon points="6,40 18,14 24,24 30,10 42,40" fill="#a855f7" opacity="0.15"/><polyline points="6,40 18,14 24,24 30,10 42,40" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 28 L20 20 L24 24" stroke="#a855f7" stroke-width="1" opacity="0.4" fill="none"/><circle cx="36" cy="12" r="4" fill="#a855f7" opacity="0.15"/></svg>',
+  // Lv.38 海浪
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M4 20 C10 16 14 24 20 20 C26 16 30 24 36 20 C42 16 46 24 48 20" stroke="#a855f7" stroke-width="2" fill="none"/><path d="M4 28 C10 24 14 32 20 28 C26 22 30 32 36 28 C42 24 46 32 48 28" stroke="#a855f7" stroke-width="1.5" fill="none" opacity="0.6"/><path d="M4 36 C10 32 14 40 20 36 C26 30 30 40 36 36 C42 32 46 40 48 36" stroke="#a855f7" stroke-width="1" fill="none" opacity="0.3"/></svg>',
+  // Lv.39 火焰
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 4 C24 4 36 16 36 28 C36 36 30 42 24 42 C18 42 12 36 12 28 C12 16 24 4 24 4 Z" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1.5"/><path d="M24 18 C24 18 30 24 30 30 C30 34 27 36 24 36 C21 36 18 34 18 30 C18 24 24 18 24 18 Z" fill="#a855f7" opacity="0.3"/></svg>',
+  // Lv.40 叶子
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 6 C36 6 42 16 42 28 C42 36 36 42 24 42 C12 42 6 36 6 28 C6 16 12 6 24 6 Z" fill="#a855f7" opacity="0.1" stroke="#a855f7" stroke-width="1.5"/><path d="M24 6 L24 42" stroke="#a855f7" stroke-width="1.5"/><path d="M24 16 L14 22" stroke="#a855f7" stroke-width="1" opacity="0.5"/><path d="M24 22 L34 16" stroke="#a855f7" stroke-width="1" opacity="0.5"/><path d="M24 28 L14 34" stroke="#a855f7" stroke-width="1" opacity="0.5"/><path d="M24 34 L34 28" stroke="#a855f7" stroke-width="1" opacity="0.5"/></svg>',
+  // Lv.41 钻石
+  '<svg viewBox="0 0 48 48" fill="none"><polygon points="24,4 40,16 32,44 16,44 8,16" fill="#a855f7" opacity="0.15" stroke="#a855f7" stroke-width="1.5"/><line x1="8" y1="16" x2="40" y2="16" stroke="#a855f7" stroke-width="1.5"/><line x1="24" y1="4" x2="16" y2="44" stroke="#a855f7" stroke-width="0.8" opacity="0.4"/><line x1="24" y1="4" x2="32" y2="44" stroke="#a855f7" stroke-width="0.8" opacity="0.4"/><line x1="24" y1="4" x2="24" y2="16" stroke="#a855f7" stroke-width="0.8" opacity="0.4"/></svg>',
+  // Lv.42 钥匙
+  '<svg viewBox="0 0 48 48" fill="none"><circle cx="18" cy="18" r="10" fill="none" stroke="#a855f7" stroke-width="2"/><circle cx="18" cy="18" r="4" fill="#a855f7" opacity="0.2"/><path d="M26 24 L40 38" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/><path d="M34 32 L38 28" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/><path d="M36 36 L40 32" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/></svg>',
+  // Lv.43 锁
+  '<svg viewBox="0 0 48 48" fill="none"><rect x="12" y="22" width="24" height="18" rx="3" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1.5"/><path d="M16 22 L16 16 C16 10 20 6 24 6 C28 6 32 10 32 16 L32 22" fill="none" stroke="#a855f7" stroke-width="2"/><circle cx="24" cy="32" r="3" fill="#a855f7" opacity="0.5"/><line x1="24" y1="35" x2="24" y2="38" stroke="#a855f7" stroke-width="2"/></svg>',
+  // Lv.44 沙漏
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M12 6 L36 6 L36 10 L24 24 L36 38 L36 42 L12 42 L12 38 L24 24 L12 10 Z" fill="#a855f7" opacity="0.12" stroke="#a855f7" stroke-width="1.5"/><line x1="10" y1="6" x2="38" y2="6" stroke="#a855f7" stroke-width="2"/><line x1="10" y1="42" x2="38" y2="42" stroke="#a855f7" stroke-width="2"/><path d="M20 30 L24 34 L28 30" stroke="#a855f7" stroke-width="1" opacity="0.4" fill="none"/></svg>',
+  // Lv.45 天平
+  '<svg viewBox="0 0 48 48" fill="none"><line x1="24" y1="8" x2="24" y2="40" stroke="#a855f7" stroke-width="2"/><line x1="8" y1="16" x2="40" y2="16" stroke="#a855f7" stroke-width="2"/><path d="M8 16 L4 28 L12 28 Z" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1"/><path d="M40 16 L36 28 L44 28 Z" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="1"/><rect x="16" y="38" width="16" height="4" rx="2" fill="#a855f7" opacity="0.4"/><circle cx="24" cy="16" r="2.5" fill="#a855f7"/></svg>',
+  // Lv.46 卷轴
+  '<svg viewBox="0 0 48 48" fill="none"><ellipse cx="12" cy="10" rx="6" ry="4" fill="#a855f7" opacity="0.3" stroke="#a855f7" stroke-width="1"/><rect x="12" y="10" width="28" height="28" fill="#a855f7" opacity="0.08" stroke="#a855f7" stroke-width="1"/><ellipse cx="40" cy="38" rx="6" ry="4" fill="#a855f7" opacity="0.3" stroke="#a855f7" stroke-width="1"/><line x1="18" y1="16" x2="34" y2="16" stroke="#a855f7" stroke-width="1" opacity="0.4"/><line x1="18" y1="22" x2="34" y2="22" stroke="#a855f7" stroke-width="1" opacity="0.4"/><line x1="18" y1="28" x2="28" y2="28" stroke="#a855f7" stroke-width="1" opacity="0.4"/></svg>',
+  // Lv.47 书本
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M8 8 L8 40 C8 40 16 36 24 40 C32 36 40 40 40 40 L40 8 C40 8 32 4 24 8 C16 4 8 8 8 8 Z" fill="#a855f7" opacity="0.12" stroke="#a855f7" stroke-width="1.5"/><line x1="24" y1="8" x2="24" y2="40" stroke="#a855f7" stroke-width="1"/><line x1="14" y1="16" x2="20" y2="16" stroke="#a855f7" stroke-width="1" opacity="0.4"/><line x1="14" y1="22" x2="20" y2="22" stroke="#a855f7" stroke-width="1" opacity="0.4"/><line x1="28" y1="16" x2="34" y2="16" stroke="#a855f7" stroke-width="1" opacity="0.4"/><line x1="28" y1="22" x2="34" y2="22" stroke="#a855f7" stroke-width="1" opacity="0.4"/></svg>',
+  // Lv.48 灯泡
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 4 C16 4 10 10 10 18 C10 24 14 28 18 30 L18 36 L30 36 L30 30 C34 28 38 24 38 18 C38 10 32 4 24 4 Z" fill="#a855f7" opacity="0.15" stroke="#a855f7" stroke-width="1.5"/><line x1="18" y1="36" x2="30" y2="36" stroke="#a855f7" stroke-width="1.5"/><line x1="19" y1="40" x2="29" y2="40" stroke="#a855f7" stroke-width="1.5"/><line x1="20" y1="44" x2="28" y2="44" stroke="#a855f7" stroke-width="1.5"/><path d="M24 12 L24 24" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><path d="M18 18 L30 18" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  // Lv.49 磁铁
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M10 20 C10 12 16 6 24 6 C32 6 38 12 38 20 L38 30 C38 34 34 38 30 38 L18 38 C14 38 10 34 10 30 Z" fill="none" stroke="#a855f7" stroke-width="2"/><rect x="10" y="20" width="8" height="10" fill="#a855f7" opacity="0.4"/><rect x="30" y="20" width="8" height="10" fill="#a855f7" opacity="0.4"/><line x1="10" y1="42" x2="10" y2="38" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/><line x1="38" y1="42" x2="38" y2="38" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/></svg>',
+  // Lv.50 无限
+  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 24 C24 24 30 14 36 14 C42 14 42 22 36 26 C30 30 24 24 24 24 C24 24 18 30 12 30 C6 30 6 22 12 18 C18 14 24 24 24 24 Z" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="2" stroke-linejoin="round"/></svg>',
 ];
 
 // 动态生成等级卡
@@ -1673,7 +1793,7 @@ function generateLevelCards(from, to, currentLv) {
     const isCurrent = i === currentLv;
     const isUnlocked = i <= currentLv;
     const cls = isCurrent ? 'level-card--current' : (isUnlocked ? 'level-card--unlocked' : 'level-card--locked');
-    const title = LEVEL_TITLES[i - 1] || `Lv.${i}`;
+    const title = getLevelTitle(i - 1) || `Lv.${i}`;
     const lvLabel = isCurrent ? `Lv.${i} ← YOU` : `Lv.${i}`;
     const lvStyle = isCurrent ? ' style="color:var(--accent);font-weight:600;"' : '';
     html += `
@@ -1690,8 +1810,8 @@ function generateLevelCards(from, to, currentLv) {
 // ============================================================
 // 屏 6：年度热力图（按自然年展示）
 // ============================================================
-async function renderHeatmap90d() {
-  const d = await cb.data.getHeatmap90d();
+async function renderHeatmapYearly() {
+  const d = await cb.data.getHeatmapYearly();
   const heatmap = d?.heatmap || [];
   const stats = d?.stats || [];
 
@@ -1706,16 +1826,32 @@ async function renderHeatmap90d() {
   const activeDays = yearData.filter(([_, v]) => v > 0).length;
   const daysPassed = Math.min(totalDaysInYear, Math.floor((now - new Date(year, 0, 1)) / 86400000) + 1);
 
-  // 统计卡片
-  const statsWrap = $('#heatmap-90d-stats');
+  // 统计卡片 — 从 yearData 实时计算（不再依赖 scanner 预计算）
+  const statsWrap = $('#heatmap-yearly-stats');
   if (statsWrap) {
-    const defaultStats = stats.length > 0 ? stats : [
+    // 当前连续天数（从今天往前数）
+    const yearByDate = new Map(yearData);
+    let currentStreak = 0;
+    for (let i = 0; i < daysPassed; i++) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if ((yearByDate.get(key) || 0) > 0) currentStreak++;
+      else break;
+    }
+    // 本周活跃天数（最近 7 天）
+    let weekActive = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now); d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      if ((yearByDate.get(key) || 0) > 0) weekActive++;
+    }
+    const yearStats = [
       { label: t('heatmap_total_active_days'), value: String(activeDays), delta: `/ ${daysPassed} ${t('heatmap_day_unit')}` },
-      { label: t('heatmap_current_streak'), value: '0 ' + t('heatmap_day_unit'), delta: '—' },
+      { label: t('heatmap_current_streak'), value: `${currentStreak} ${t('heatmap_day_unit')}`, delta: currentStreak > 0 ? '🔥' : '—' },
       { label: t('heatmap_daily_avg'), value: daysPassed > 0 ? (activeDays / daysPassed).toFixed(1) + ' ' + t('heatmap_times_unit') : '0 ' + t('heatmap_times_unit'), delta: '—' },
-      { label: t('heatmap_weekly_active'), value: '0 / 7', delta: '—' },
+      { label: t('heatmap_weekly_active'), value: `${weekActive} / 7`, delta: `占比 ${Math.round(weekActive / 7 * 100)}%` },
     ];
-    statsWrap.innerHTML = defaultStats.map(s => `
+    statsWrap.innerHTML = yearStats.map(s => `
       <div class="card stat-card">
         <div class="stat-card__label">${esc(s.label)}</div>
         <div class="stat-card__value">${esc(String(s.value))}</div>
@@ -1725,16 +1861,16 @@ async function renderHeatmap90d() {
   }
 
   // 副标题
-  const sub = $('#heatmap-90d-sub');
+  const sub = $('#heatmap-yearly-sub');
   if (sub) {
     sub.textContent = year + t('heatmap_year_active') + activeDays + ' / ' + daysPassed + t('heatmap_days');
   }
 
   // ECharts 日历热力图 — 整个自然年
-  const chartEl = document.getElementById('heatmap-90d-chart');
+  const chartEl = document.getElementById('heatmap-yearly-chart');
   if (chartEl) {
     chartEl.style.height = '260px';
-    const chart = getOrInitChart('heatmap-90d-chart');
+    const chart = getOrInitChart('heatmap-yearly-chart');
     if (chart && heatmap.length > 0) {
       const data = yearData.map(([k, v]) => [k, v]);
       const hc = getHeatmapColors();
@@ -1824,7 +1960,7 @@ async function renderHeatmap90d() {
 // 刷新按钮
 $('#btn-heatmap-refresh')?.addEventListener('click', async () => {
   await cb.data.rescan();
-  renderHeatmap90d();
+  renderHeatmapYearly();
   flashToast(t('toast_heatmap_refreshed'));
 });
 
@@ -2366,6 +2502,7 @@ async function bootstrap() {
   applyTheme(State.settings?.theme || 'dark');
   // 1.6 应用保存的语言
   if (State.settings?.language) setLocale(State.settings.language);
+  applyI18n();
   // 2. 应用信息
   try {
     const info = await cb.getAppInfo();
@@ -2409,11 +2546,11 @@ async function bootstrap() {
       const r = State.currentRoute;
       if (r === 'overview') await renderOverview();
       else if (r === 'projects') await renderProjects();
-      else if (r === 'heatmap') await renderHeatmap90d();
+      else if (r === 'heatmap') await renderHeatmapYearly();
       updateSidebarBadges({
         projectCount: (d?.recentProjects || []).length,
         modelCount:    (d?.pieData || []).length,
-        levelStr:      d?.levels?.current ? `${d.levels.current.lv}/99` : null,
+        levelStr:      d?.levels?.current ? `${d.levels.current.lv}/50` : null,
       });
     } catch (e) {
       console.warn('[bootstrap] rescan failed:', e.message);

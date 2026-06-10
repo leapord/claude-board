@@ -514,7 +514,7 @@ ipcMain.handle('data:get-overview', async (_e, force) => {
     pieData: d.pieData, recentProjects: d.recentProjects, recentActivities: d.recentActivities,
     meta: d.meta,
     // 关键字段：热力图、模型、token、项目——之前漏了导致热力图显示"暂无数据"
-    heatmap: d.heatmap, heatmap90dStats: d.heatmap90dStats, levels: d.levels,
+    heatmap: d.heatmap, heatmapYearlyStats: d.heatmapYearlyStats, levels: d.levels,
     projects: d.projects, models: d.models, tokens: d.tokens,
   };
 });
@@ -530,9 +530,9 @@ ipcMain.handle('data:get-tokens', async () => {
   const d = await getScan();
   return d && d.tokens;
 });
-ipcMain.handle('data:get-heatmap-90d', async () => {
+ipcMain.handle('data:get-heatmap-yearly', async () => {
   const d = await getScan();
-  return d && { heatmap: d.heatmap, stats: d.heatmap90dStats };
+  return d && { heatmap: d.heatmap, stats: d.heatmapYearlyStats };
 });
 ipcMain.handle('data:get-levels', async () => {
   const d = await getScan();
@@ -814,7 +814,7 @@ async function runSmokeTest() {
         ['data:get-tokens',  () => cb.data.getTokens()],
         ['data:get-levels',  () => cb.data.getLevels()],
         ['data:get-meta',    () => cb.data.getMeta()],
-        ['data:get-heatmap-90d',() => cb.data.getHeatmap90d()],
+        ['data:get-heatmap-yearly',() => cb.data.getHeatmapYearly()],
         ['data:rescan',      () => cb.data.rescan()],
         ['data:clear-cache', () => cb.data.clearCache()],
         ['terminal:start',   () => cb.terminal.start()],  // 真启动 zsh 看是否成功
