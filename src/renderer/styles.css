@@ -501,6 +501,13 @@ input, select, textarea { font-family: inherit; color: inherit; }
   border-color: var(--accent); box-shadow: 0 0 16px rgba(91,157,255,0.3);
 }
 .level-card--locked { opacity: 0.4; }
+.level-card--max {
+  background: linear-gradient(135deg, rgba(251,191,36,0.15), rgba(245,158,11,0.08));
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251,191,36,0.3), inset 0 0 8px rgba(251,191,36,0.08);
+}
+.level-card--max .level-card__lv { color: #fbbf24; }
+.level-card--max .level-card__name { color: #fbbf24; }
 .level-card svg { width: 40px; height: 40px; }
 .level-card__lv { font-size: 11px; color: var(--text-2); margin-top: 4px; }
 .level-card__name { font-size: 11px; color: var(--text-1); margin-top: 2px; }

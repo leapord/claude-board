@@ -1669,12 +1669,22 @@ $('#btn-level-help')?.addEventListener('click', () => {
   });
 });
 
-// 等级名称表（1-20）— 使用 i18n key，通过 t() 翻译
+// 等级名称表（1-50）— 使用 i18n key，通过 t() 翻译
 const LEVEL_TITLE_KEYS = [
+  // 萌芽段 L1-5
   'lv_sprout', 'lv_seedling', 'lv_clover', 'lv_small_tree', 'lv_big_tree',
+  // 学者段 L6-10
   'lv_bamboo', 'lv_book', 'lv_bachelor', 'lv_master', 'lv_doctor',
+  // 工匠段 L11-20
   'lv_hammer', 'lv_wrench', 'lv_gear', 'lv_saw', 'lv_brush',
   'lv_ruler', 'lv_screwdriver', 'lv_shield', 'lv_gem', 'lv_crown20',
+  // 专家段 L21-50
+  'lv_telescope', 'lv_microscope', 'lv_atom', 'lv_dna', 'lv_satellite',
+  'lv_rocket', 'lv_globe', 'lv_compass', 'lv_lightning', 'lv_crystal',
+  'lv_beaker', 'lv_brain', 'lv_eye', 'lv_sun', 'lv_moon',
+  'lv_star', 'lv_mountain', 'lv_wave', 'lv_flame', 'lv_leaf',
+  'lv_diamond', 'lv_key', 'lv_lock', 'lv_hourglass', 'lv_scale',
+  'lv_scroll', 'lv_book2', 'lv_lightbulb', 'lv_magnet', 'lv_infinity',
 ];
 function getLevelTitle(idx) {
   const key = LEVEL_TITLE_KEYS[idx];
@@ -1782,8 +1792,8 @@ const LEVEL_ICONS = [
   '<svg viewBox="0 0 48 48" fill="none"><path d="M24 4 C16 4 10 10 10 18 C10 24 14 28 18 30 L18 36 L30 36 L30 30 C34 28 38 24 38 18 C38 10 32 4 24 4 Z" fill="#a855f7" opacity="0.15" stroke="#a855f7" stroke-width="1.5"/><line x1="18" y1="36" x2="30" y2="36" stroke="#a855f7" stroke-width="1.5"/><line x1="19" y1="40" x2="29" y2="40" stroke="#a855f7" stroke-width="1.5"/><line x1="20" y1="44" x2="28" y2="44" stroke="#a855f7" stroke-width="1.5"/><path d="M24 12 L24 24" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/><path d="M18 18 L30 18" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/></svg>',
   // Lv.49 磁铁
   '<svg viewBox="0 0 48 48" fill="none"><path d="M10 20 C10 12 16 6 24 6 C32 6 38 12 38 20 L38 30 C38 34 34 38 30 38 L18 38 C14 38 10 34 10 30 Z" fill="none" stroke="#a855f7" stroke-width="2"/><rect x="10" y="20" width="8" height="10" fill="#a855f7" opacity="0.4"/><rect x="30" y="20" width="8" height="10" fill="#a855f7" opacity="0.4"/><line x1="10" y1="42" x2="10" y2="38" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/><line x1="38" y1="42" x2="38" y2="38" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/></svg>',
-  // Lv.50 无限
-  '<svg viewBox="0 0 48 48" fill="none"><path d="M24 24 C24 24 30 14 36 14 C42 14 42 22 36 26 C30 30 24 24 24 24 C24 24 18 30 12 30 C6 30 6 22 12 18 C18 14 24 24 24 24 Z" fill="#a855f7" opacity="0.2" stroke="#a855f7" stroke-width="2" stroke-linejoin="round"/></svg>',
+  // Lv.50 无限 · 顶级大牛
+  '<svg viewBox="0 0 48 48" fill="none"><defs><radialGradient id="g50" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fbbf24" stop-opacity="0.25"/><stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/></radialGradient></defs><circle cx="24" cy="24" r="22" fill="url(#g50)"/><line x1="24" y1="2" x2="24" y2="8" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="24" y1="40" x2="24" y2="46" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="2" y1="24" x2="8" y2="24" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="40" y1="24" x2="46" y2="24" stroke="#fbbf24" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="7" y1="7" x2="11" y2="11" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.35"/><line x1="37" y1="7" x2="41" y2="11" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.35"/><line x1="7" y1="41" x2="11" y2="37" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.35"/><line x1="37" y1="41" x2="41" y2="37" stroke="#fbbf24" stroke-width="1" stroke-linecap="round" opacity="0.35"/><path d="M16 12 L20 18 L24 10 L28 18 L32 12 L30 20 L18 20 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="0.8" stroke-linejoin="round"/><circle cx="20" cy="13" r="1.2" fill="#fef3c7"/><circle cx="24" cy="10" r="1.5" fill="#fef3c7"/><circle cx="28" cy="13" r="1.2" fill="#fef3c7"/><path d="M24 24 C24 24 30 16 36 16 C42 16 42 23 36 26 C30 29 24 24 24 24 C24 24 18 29 12 26 C6 23 6 16 12 16 C18 16 24 24 24 24 Z" fill="#fbbf24" opacity="0.35" stroke="#f59e0b" stroke-width="2" stroke-linejoin="round"/><circle cx="10" cy="8" r="1" fill="#fbbf24" opacity="0.6"/><circle cx="38" cy="8" r="1" fill="#fbbf24" opacity="0.6"/><circle cx="8" cy="36" r="0.8" fill="#fbbf24" opacity="0.5"/><circle cx="40" cy="36" r="0.8" fill="#fbbf24" opacity="0.5"/><circle cx="6" cy="24" r="0.7" fill="#fbbf24" opacity="0.4"/><circle cx="42" cy="24" r="0.7" fill="#fbbf24" opacity="0.4"/></svg>',
 ];
 
 // 动态生成等级卡
@@ -1792,10 +1802,11 @@ function generateLevelCards(from, to, currentLv) {
   for (let i = from; i <= to && i <= LEVEL_ICONS.length; i++) {
     const isCurrent = i === currentLv;
     const isUnlocked = i <= currentLv;
-    const cls = isCurrent ? 'level-card--current' : (isUnlocked ? 'level-card--unlocked' : 'level-card--locked');
+    const isMax = i === 50;
+    const cls = (isCurrent && isMax) ? 'level-card--current level-card--max' : (isCurrent ? 'level-card--current' : (isMax && isUnlocked ? 'level-card--max' : (isUnlocked ? 'level-card--unlocked' : 'level-card--locked')));
     const title = getLevelTitle(i - 1) || `Lv.${i}`;
-    const lvLabel = isCurrent ? `Lv.${i} ← YOU` : `Lv.${i}`;
-    const lvStyle = isCurrent ? ' style="color:var(--accent);font-weight:600;"' : '';
+    const lvLabel = isCurrent ? `Lv.${i} ← YOU` : (isMax ? `★ Lv.${i} ★` : `Lv.${i}`);
+    const lvStyle = isCurrent ? ' style="color:var(--accent);font-weight:600;"' : (isMax && isUnlocked ? ' style="color:#fbbf24;font-weight:700;"' : '');
     html += `
       <div class="level-card ${cls}">
         ${LEVEL_ICONS[i - 1]}

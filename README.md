@@ -70,16 +70,25 @@
 - **electron-updater** — 自动更新
 - **electron-builder** — 跨平台打包
 
-## 开发
+## 开发 & 打包
 
 ```bash
+# 安装依赖
 npm install
-npm run dev      # 开发模式（带 DevTools）
-npm start        # 仅启动
-npm run dist:mac # macOS DMG
-npm run dist:win # Windows 安装包
-npm run dist:linux # Linux AppImage/DEB
+
+# 开发模式（带 DevTools）
+npm run dev
+
+# 仅启动
+npm start
+
+# 打包
+npm run dist:mac      # macOS DMG + ZIP
+npm run dist:win      # Windows 安装包 + 便携版
+npm run dist:all      # 所有平台
 ```
+
+打包产物在 `dist/` 目录下。
 
 ## 目录结构
 
@@ -91,7 +100,8 @@ claude-board/
 │   ├── icon.png        # 通用图标
 │   └── tray-icon.png   # 托盘图标
 ├── scripts/
-│   └── generate-icon.js # 图标生成脚本
+│   ├── generate-icon.js # 图标生成脚本
+│   └── release.sh       # 发布脚本
 ├── src/
 │   ├── main/
 │   │   ├── main.js     # 主进程：窗口 + IPC + 设置 + 托盘 + 自动更新

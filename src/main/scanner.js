@@ -250,6 +250,35 @@ function aggregate(allSessions, modelPrices = {}) {
   return { projects, models, dates, totals: { in: totalIn, out: totalOut, cw: totalCW, cr: totalCR, cost: totalCost, cacheHit: totalCacheHit, turns: totalTurns }, sessions: allSessions };
 }
 
+// ----- 解析 ~/.claude/history.jsonl（用户交互历史，补充被清理的旧 session）-----
+async function parseHistoryJsonl(file) {
+  const sessions = new Map(); // sessionId -> { id, first, last, turns, cwd }
+  try {
+    const content = await fs.promises.readFile(file, 'utf-8');
+    const lines = content.split('\n').filter(Boolean);
+    for (const line of lines) {
+      let rec;
+      try { rec = JSON.parse(line); } catch { continue; }
+      if (!rec.sessionId || !rec.timestamp) continue;
+      // history.jsonl 的 timestamp 是毫秒时间戳（数字），转为 ISO 字符串
+      const ts = typeof rec.timestamp === 'number'
+        ? new Date(rec.timestamp).toISOString()
+        : rec.timestamp;
+      let s = sessions.get(rec.sessionId);
+      if (!s) {
+        s = { id: rec.sessionId, records: [], cwd: rec.project || '', first: ts, last: ts, model: null, inTok: 0, outTok: 0, cw: 0, cr: 0, turns: 0 };
+        sessions.set(rec.sessionId, s);
+      }
+      if (ts < s.first) s.first = ts;
+      if (ts > s.last) s.last = ts;
+      s.turns += 1;
+    }
+  } catch (e) {
+    // 文件读失败忽略
+  }
+  return [...sessions.values()];
+}
+
 // ----- 主入口：扫描 + 聚合 + 转 UI 友好形态 -----
 async function scan(opts = {}) {
   const logsPath = expandHome(opts.logsPath || '~/.claude/projects');
@@ -262,6 +291,19 @@ async function scan(opts = {}) {
     const ss = await parseJsonl(f);
     all = all.concat(ss);
   }
+  // 补充读取 ~/.claude/history.jsonl（包含被清理的旧 session 历史）
+  const historyFile = path.join(os.homedir(), '.claude', 'history.jsonl');
+  const existingIds = new Set(all.map(s => s.id));
+  try {
+    if ((await fs.promises.stat(historyFile)).isFile()) {
+      const historySessions = await parseHistoryJsonl(historyFile);
+      for (const hs of historySessions) {
+        if (!existingIds.has(hs.id)) {
+          all.push(hs);
+        }
+      }
+    }
+  } catch { /* history.jsonl 不存在则忽略 */ }
   // ⚠️ 不要过滤 sessions！全局 stats/heatmap/trend/pie/sankey 永远用全部 session
   // 只有 recentProjects/recentActivities 才用 configuredProjects 列表
   const agg = aggregate(all, modelPrices);
